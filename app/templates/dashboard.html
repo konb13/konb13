@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – ArticleBot{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle text-muted">Manage, edit, and publish your generated articles</p>
+  </div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#generateModal">
+    <i class="bi bi-plus-lg me-1"></i> New Article
+  </button>
+</div>
+
+<!-- ── Stat cards ─────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Articles</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card--green">
+      <div class="stat-value">{{ stats.published }}</div>
+      <div class="stat-label">Published</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card--yellow">
+      <div class="stat-value">{{ stats.drafts }}</div>
+      <div class="stat-label">Drafts</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card--blue">
+      <div class="stat-value">{{ stats.ready }}</div>
+      <div class="stat-label">Ready to Publish</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Active jobs banner ─────────────────────────────────────────────────── -->
+{% set running_jobs = recent_jobs | selectattr("status","eq","running") | list %}
+{% if running_jobs %}
+<div class="alert alert-info d-flex align-items-center gap-2 mb-4" id="activeJobsBanner">
+  <div class="spinner-border spinner-border-sm"></div>
+  <strong>{{ running_jobs|length }} article(s) generating…</strong>
+  <span class="text-muted small">Page will refresh when complete.</span>
+</div>
+<script>
+  // Poll and auto-refresh while jobs are running
+  (function poll() {
+    fetch('/api/jobs').then(r => r.json()).then(jobs => {
+      const running = jobs.filter(j => j.status === 'running');
+      if (running.length === 0) { location.reload(); }
+      else { setTimeout(poll, 4000); }
+    }).catch(() => setTimeout(poll, 8000));
+  })();
+</script>
+{% endif %}
+
+<!-- ── Filters ────────────────────────────────────────────────────────────── -->
+<div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+  <form method="get" action="/" class="d-flex gap-2 flex-wrap align-items-center w-100">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search articles…"
+           class="form-control form-control-sm bg-dark text-white border-secondary" style="max-width:240px;" />
+    <select name="status" class="form-select form-select-sm bg-dark text-white border-secondary" style="max-width:160px;"
+            onchange="this.form.submit()">
+      <option value="" {% if not filter_status %}selected{% endif %}>All statuses</option>
+      <option value="draft" {% if filter_status=='draft' %}selected{% endif %}>Draft</option>
+      <option value="ready" {% if filter_status=='ready' %}selected{% endif %}>Ready</option>
+      <option value="publishing" {% if filter_status=='publishing' %}selected{% endif %}>Publishing</option>
+      <option value="published" {% if filter_status=='published' %}selected{% endif %}>Published</option>
+      <option value="failed" {% if filter_status=='failed' %}selected{% endif %}>Failed</option>
+    </select>
+    <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+    {% if filter_status or search %}
+    <a href="/" class="btn btn-outline-secondary btn-sm">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- ── Article grid ───────────────────────────────────────────────────────── -->
+{% if articles %}
+<div class="article-grid">
+  {% for a in articles %}
+  <div class="article-card" id="card-{{ a.id }}">
+    <!-- Thumbnail -->
+    <div class="article-thumb">
+      {% if a.image_url %}
+      <img src="{{ a.image_url }}" alt="{{ a.title }}" loading="lazy" />
+      {% else %}
+      <div class="article-thumb-placeholder"><i class="bi bi-image text-muted" style="font-size:2rem;"></i></div>
+      {% endif %}
+      <span class="status-badge status-{{ a.status }}">{{ a.status }}</span>
+    </div>
+
+    <!-- Body -->
+    <div class="article-card-body">
+      <div class="article-tone-badge">
+        <i class="bi bi-chat-quote me-1"></i>{{ a.tone }}
+      </div>
+      <h3 class="article-title">{{ a.title }}</h3>
+      <p class="article-meta">{{ a.meta_description[:100] }}{% if a.meta_description|length > 100 %}…{% endif %}</p>
+      <div class="article-tags">
+        {% for cat in a.categories[:2] %}
+        <span class="tag tag--cat">{{ cat }}</span>
+        {% endfor %}
+        {% for tag in a.tags[:3] %}
+        <span class="tag tag--tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+      <p class="article-date text-muted small">{{ a.created_at[:10] if a.created_at else '' }}</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="article-card-actions">
+      <a href="/articles/{{ a.id }}/edit" class="btn btn-sm btn-outline-light" title="Edit">
+        <i class="bi bi-pencil"></i> Edit
+      </a>
+      {% if a.status not in ['published', 'publishing'] %}
+      <button class="btn btn-sm btn-success" title="Publish" onclick="publishArticle({{ a.id }}, this)">
+        <i class="bi bi-send"></i> Publish
+      </button>
+      {% endif %}
+      {% if a.wp_post_url %}
+      <a href="{{ a.wp_post_url }}" target="_blank" class="btn btn-sm btn-outline-info" title="View live">
+        <i class="bi bi-box-arrow-up-right"></i>
+      </a>
+      {% endif %}
+      <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteArticle({{ a.id }}, this)">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="bi bi-journal-plus"></i>
+  <p>No articles yet. Click <strong>New Article</strong> to generate your first one.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function publishArticle(id, btn) {
+  if (!confirm('Publish this article to WordPress now?')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  fetch(`/api/articles/${id}/publish`, {method:'POST'})
+    .then(r => r.json())
+    .then(() => {
+      // Poll until done
+      const poll = () => fetch(`/api/articles`).then(r=>r.json()).then(arts => {
+        const a = arts.find(x => x.id === id);
+        if (a && (a.status === 'published' || a.status === 'failed')) {
+          location.reload();
+        } else {
+          setTimeout(poll, 3000);
+        }
+      });
+      poll();
+    });
+}
+
+function deleteArticle(id, btn) {
+  if (!confirm('Delete this article permanently?')) return;
+  fetch(`/api/articles/${id}`, {method:'DELETE'})
+    .then(() => document.getElementById(`card-${id}`).remove());
+}
+</script>
+{% endblock %}

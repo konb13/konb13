@@ -28,6 +28,39 @@ from .researcher import TrendReport
 
 load_dotenv()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Tone library
+# ─────────────────────────────────────────────────────────────────────────────
+
+TONES: dict[str, str] = {
+    "professional": (
+        "Write in a professional, polished tone suitable for business and industry audiences. "
+        "Use precise language, avoid slang, and maintain an authoritative but approachable voice."
+    ),
+    "casual": (
+        "Write in a casual, friendly tone as if talking to a friend. "
+        "Use contractions, everyday language, and a relaxed pace. Keep it warm and approachable."
+    ),
+    "educational": (
+        "Write in a clear, educational tone that thoroughly explains concepts step by step. "
+        "Define jargon, use analogies, and assume the reader is smart but unfamiliar with the topic."
+    ),
+    "conversational": (
+        "Write in a warm, conversational blog style. Speak directly to the reader using 'you', "
+        "ask rhetorical questions, and make it feel like a natural human conversation."
+    ),
+    "authoritative": (
+        "Write in a confident, expert-level authoritative tone. Express clear opinions backed by "
+        "reasoning, reference industry standards, and position the content as definitive guidance."
+    ),
+    "witty": (
+        "Write in a witty, entertaining tone with light, tasteful humour woven throughout. "
+        "Be clever without being distracting. The information should still be useful and complete."
+    ),
+}
+
+DEFAULT_TONE = "professional"
+
 
 @dataclass
 class Article:
@@ -39,9 +72,10 @@ class Article:
     tags: list[str]
     categories: list[str]
     slug: str
+    tone: str = DEFAULT_TONE
 
 
-_SYSTEM_PROMPT = """
+_SYSTEM_PROMPT_BASE = """
 You are an expert SEO content strategist and copywriter.
 Your articles are optimised for both traditional search engines (Google/Bing)
 AND generative AI engines (ChatGPT Search, Perplexity, Google SGE).
@@ -56,9 +90,13 @@ Rules:
 - Add a bulleted list OR comparison table where relevant.
 - End with an FAQ section: <h2>Frequently Asked Questions</h2> with at least 3 Q&A pairs using <h3> for questions.
 - Target word count: 1 400–1 800 words.
-- Tone: authoritative, helpful, conversational – no fluff.
 - Do NOT invent statistics; state "according to recent data" where numbers would be used.
 """.strip()
+
+
+def _system_prompt_for_tone(tone: str) -> str:
+    tone_instruction = TONES.get(tone, TONES[DEFAULT_TONE])
+    return f"{_SYSTEM_PROMPT_BASE}\n\nTONE INSTRUCTION: {tone_instruction}"
 
 
 def _build_user_prompt(
@@ -93,7 +131,7 @@ slug should be a lowercase, hyphen-separated URL slug.
 """.strip()
 
 
-def _parse_response(raw: str, topic: str) -> Article:
+def _parse_response(raw: str, topic: str, tone: str) -> Article:
     import json
     import re
 
@@ -131,6 +169,7 @@ def _parse_response(raw: str, topic: str) -> Article:
         tags=meta.get("tags", [topic]),
         categories=meta.get("categories", ["General"]),
         slug=meta.get("slug", topic.lower().replace(" ", "-")),
+        tone=tone,
     )
 
 
@@ -139,16 +178,18 @@ def write_article(
     trend_report: TrendReport,
     language: str = "en",
     country: str = "US",
+    tone: str = DEFAULT_TONE,
 ) -> Article:
     """Generate and return a full SEO/GEO optimised Article."""
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     user_prompt = _build_user_prompt(topic, trend_report, language, country)
+    system_prompt = _system_prompt_for_tone(tone)
 
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.7,
@@ -156,4 +197,4 @@ def write_article(
     )
 
     raw = response.choices[0].message.content or ""
-    return _parse_response(raw, topic)
+    return _parse_response(raw, topic, tone)

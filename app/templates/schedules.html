@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}Schedules – ArticleBot{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1 class="page-title">Schedules</h1>
+    <p class="page-subtitle text-muted">Auto-generate 1–5 articles per day per category</p>
+  </div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newScheduleModal">
+    <i class="bi bi-plus-lg me-1"></i> New Schedule
+  </button>
+</div>
+
+{% if schedules %}
+<div class="row g-3">
+  {% for s in schedules %}
+  <div class="col-md-6 col-xl-4" id="scard-{{ s.id }}">
+    <div class="editor-card h-100 {% if not s.enabled %}opacity-50{% endif %}">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <h5 class="mb-0 text-white">{{ s.category }}</h5>
+          <span class="text-muted small">
+            {{ s.articles_per_day }} article{% if s.articles_per_day > 1 %}s{% endif %}/day
+            &middot; {{ '%02d:00 UTC' % s.publish_hour }}
+          </span>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" role="switch"
+                 {% if s.enabled %}checked{% endif %}
+                 onchange="toggleSchedule({{ s.id }}, this)" />
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        <span class="badge bg-secondary">{{ s.tone }}</span>
+        <span class="badge bg-secondary">{{ s.language }}/{{ s.country }}</span>
+        <span class="badge bg-secondary">{{ s.image_provider }}</span>
+        {% if s.auto_publish %}
+        <span class="badge bg-success">auto-publish</span>
+        {% else %}
+        <span class="badge bg-warning text-dark">save as draft</span>
+        {% endif %}
+      </div>
+
+      {% if s.last_run_at %}
+      <p class="text-muted small mb-2">Last run: {{ s.last_run_at[:16] }}</p>
+      {% endif %}
+
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-light flex-grow-1"
+                onclick="openEditSchedule({{ s | tojson }})">
+          <i class="bi bi-pencil"></i> Edit
+        </button>
+        <button class="btn btn-sm btn-outline-warning"
+                onclick="runScheduleNow({{ s.id }}, this)" title="Run now">
+          <i class="bi bi-lightning-charge"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger"
+                onclick="deleteSchedule({{ s.id }})" title="Delete">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="bi bi-calendar-x"></i>
+  <p>No schedules yet. Click <strong>New Schedule</strong> to set up auto-generation.</p>
+</div>
+{% endif %}
+
+<!-- ── New / Edit Schedule Modal ─────────────────────────────────────────── -->
+<div class="modal fade" id="newScheduleModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-white border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="schedModalTitle"><i class="bi bi-calendar-plus me-2"></i>New Schedule</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="schedId" value="" />
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label text-muted small">Category / Topic Area <span class="text-danger">*</span></label>
+            <input type="text" id="schedCategory" class="form-control bg-secondary text-white border-0"
+                   placeholder="e.g. Technology, Health, Finance" />
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small">Articles per day</label>
+            <div class="d-flex align-items-center gap-3">
+              <input type="range" id="schedCount" min="1" max="5" value="1"
+                     class="form-range flex-grow-1" oninput="document.getElementById('schedCountVal').textContent=this.value" />
+              <span id="schedCountVal" class="badge bg-primary fs-6" style="min-width:2rem;">1</span>
+            </div>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small">Publish time (UTC hour)</label>
+            <select id="schedHour" class="form-select bg-secondary text-white border-0">
+              {% for h in range(24) %}
+              <option value="{{ h }}" {% if h == 9 %}selected{% endif %}>{{ '%02d:00 UTC' % h }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small">Writing Tone</label>
+            <select id="schedTone" class="form-select bg-secondary text-white border-0">
+              {% for t in tones %}
+              <option value="{{ t }}">{{ t|capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-3">
+            <label class="form-label text-muted small">Language</label>
+            <input type="text" id="schedLang" class="form-control bg-secondary text-white border-0" value="en" maxlength="5" />
+          </div>
+          <div class="col-3">
+            <label class="form-label text-muted small">Country</label>
+            <input type="text" id="schedCountry" class="form-control bg-secondary text-white border-0" value="US" maxlength="3" />
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small">Image Provider</label>
+            <select id="schedImageProvider" class="form-select bg-secondary text-white border-0">
+              <option value="dalle">DALL-E 3</option>
+              <option value="gemini">Gemini Imagen</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small">After generation</label>
+            <select id="schedAutoPublish" class="form-select bg-secondary text-white border-0">
+              <option value="false">Save as Draft (review first)</option>
+              <option value="true">Auto-publish to WordPress</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small">Status</label>
+            <select id="schedEnabled" class="form-select bg-secondary text-white border-0">
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+          </div>
+        </div>
+        <div id="schedStatus" class="mt-3 d-none text-info small"></div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSchedule()">
+          <i class="bi bi-check-lg"></i> Save Schedule
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const schedModal = new bootstrap.Modal(document.getElementById('newScheduleModal'));
+
+function openEditSchedule(s) {
+  document.getElementById('schedModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Schedule';
+  document.getElementById('schedId').value = s.id;
+  document.getElementById('schedCategory').value = s.category;
+  document.getElementById('schedCount').value = s.articles_per_day;
+  document.getElementById('schedCountVal').textContent = s.articles_per_day;
+  document.getElementById('schedHour').value = s.publish_hour;
+  document.getElementById('schedTone').value = s.tone;
+  document.getElementById('schedLang').value = s.language;
+  document.getElementById('schedCountry').value = s.country;
+  document.getElementById('schedImageProvider').value = s.image_provider;
+  document.getElementById('schedAutoPublish').value = s.auto_publish ? 'true' : 'false';
+  document.getElementById('schedEnabled').value = s.enabled ? 'true' : 'false';
+  schedModal.show();
+}
+
+async function saveSchedule() {
+  const id = document.getElementById('schedId').value;
+  const payload = {
+    category: document.getElementById('schedCategory').value.trim(),
+    articles_per_day: parseInt(document.getElementById('schedCount').value),
+    publish_hour: parseInt(document.getElementById('schedHour').value),
+    tone: document.getElementById('schedTone').value,
+    language: document.getElementById('schedLang').value.trim(),
+    country: document.getElementById('schedCountry').value.trim(),
+    image_provider: document.getElementById('schedImageProvider').value,
+    auto_publish: document.getElementById('schedAutoPublish').value === 'true',
+    enabled: document.getElementById('schedEnabled').value === 'true',
+  };
+
+  if (!payload.category) { alert('Category is required'); return; }
+
+  const url = id ? `/api/schedules/${id}` : '/api/schedules';
+  const method = id ? 'PUT' : 'POST';
+  const r = await fetch(url, {
+    method, headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (r.ok) {
+    schedModal.hide();
+    location.reload();
+  } else {
+    alert('Save failed: ' + await r.text());
+  }
+}
+
+async function toggleSchedule(id, checkbox) {
+  const r = await fetch(`/api/schedules/${id}/toggle`, { method: 'POST' });
+  if (!r.ok) { checkbox.checked = !checkbox.checked; }
+  else { location.reload(); }
+}
+
+async function deleteSchedule(id) {
+  if (!confirm('Delete this schedule?')) return;
+  await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+  document.getElementById(`scard-${id}`).remove();
+}
+
+async function runScheduleNow(id, btn) {
+  if (!confirm('Trigger this schedule now? This will start generating articles immediately.')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  const r = await fetch(`/api/schedules/${id}/run-now`, { method: 'POST' });
+  const data = await r.json();
+  alert(data.message || 'Started!');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-lightning-charge"></i>';
+}
+
+// Reset modal when opened fresh (not editing)
+document.getElementById('newScheduleModal').addEventListener('show.bs.modal', function(e) {
+  if (!e.relatedTarget) return; // opened programmatically (edit mode) — don't reset
+  document.getElementById('schedModalTitle').innerHTML = '<i class="bi bi-calendar-plus me-2"></i>New Schedule';
+  document.getElementById('schedId').value = '';
+  document.getElementById('schedCategory').value = '';
+  document.getElementById('schedCount').value = 1;
+  document.getElementById('schedCountVal').textContent = 1;
+  document.getElementById('schedHour').value = 9;
+  document.getElementById('schedTone').value = 'professional';
+  document.getElementById('schedLang').value = 'en';
+  document.getElementById('schedCountry').value = 'US';
+  document.getElementById('schedAutoPublish').value = 'false';
+  document.getElementById('schedEnabled').value = 'true';
+});
+</script>
+{% endblock %}

@@ -62,6 +62,7 @@ def run_workflow(
     topic: str,
     country: str = "US",
     language: str = "en",
+    tone: str = "professional",
     image_provider: str | None = None,
     draft: bool = False,
     no_publish: bool = False,
@@ -80,6 +81,7 @@ def run_workflow(
             f"[bold]Topic:[/bold] {topic}\n"
             f"[bold]Country:[/bold] {country}  |  "
             f"[bold]Language:[/bold] {language}  |  "
+            f"[bold]Tone:[/bold] {tone}  |  "
             f"[bold]Image provider:[/bold] {os.getenv('IMAGE_PROVIDER', 'dalle')}",
             title="[bold magenta]Auto Article Workflow[/bold magenta]",
             expand=False,
@@ -110,6 +112,7 @@ def run_workflow(
         trend_report,
         language,
         country,
+        tone,
     )
     console.print(
         f"     [bold]{article.title}[/bold]\n"
@@ -125,6 +128,29 @@ def run_workflow(
         article.title,
     )
     console.print(f"     Saved to: [italic]{image_path}[/italic]")
+
+    # ── Store in dashboard DB ─────────────────────────────────────────────────
+    try:
+        from app.database import init_db, SessionLocal, ArticleModel
+        init_db()
+        db = SessionLocal()
+        db_art = ArticleModel(
+            topic=topic, title=article.title, slug=article.slug,
+            meta_description=article.meta_description,
+            focus_keyword=article.focus_keyword,
+            html_content=article.html_content,
+            tone=article.tone, language=language, country=country,
+            featured_image_path=str(image_path),
+            status="draft",
+        )
+        db_art.tags = article.tags
+        db_art.categories = article.categories
+        db.add(db_art)
+        db.commit()
+        db.close()
+        console.print("  [green]✓[/green] Saved to dashboard DB (open dashboard to edit)")
+    except Exception:
+        pass  # Dashboard DB is optional when using CLI directly
 
     # ── Step 4: Publish ───────────────────────────────────────────────────────
     if no_publish:
@@ -190,6 +216,12 @@ def main() -> None:
         help="Language code for the article (default: en)",
     )
     parser.add_argument(
+        "--tone",
+        choices=["professional", "casual", "educational", "conversational", "authoritative", "witty"],
+        default="professional",
+        help="Writing tone for the article (default: professional)",
+    )
+    parser.add_argument(
         "--image-provider",
         choices=["dalle", "gemini"],
         default=None,
@@ -218,6 +250,7 @@ def main() -> None:
             topic=args.topic,
             country=args.country,
             language=args.lang,
+            tone=args.tone,
             image_provider=args.image_provider,
             draft=args.draft,
             no_publish=args.no_publish,

@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% block title %}Edit – {{ article.title }}{% endblock %}
+
+{% block head %}
+<!-- Quill rich text editor -->
+<link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css" />
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <a href="/" class="btn btn-sm btn-outline-secondary me-2"><i class="bi bi-arrow-left"></i></a>
+    <span class="page-title d-inline">Edit Article</span>
+    <span class="ms-3 status-badge status-{{ article.status }}">{{ article.status }}</span>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-secondary btn-sm" onclick="saveArticle('draft')">
+      <i class="bi bi-floppy"></i> Save Draft
+    </button>
+    <button class="btn btn-primary btn-sm" onclick="saveArticle('ready')">
+      <i class="bi bi-check-lg"></i> Mark Ready
+    </button>
+    <button class="btn btn-success btn-sm" id="publishBtn" onclick="publishNow()">
+      <i class="bi bi-send"></i> Publish to WP
+    </button>
+    {% if article.wp_post_url %}
+    <a href="{{ article.wp_post_url }}" target="_blank" class="btn btn-outline-info btn-sm">
+      <i class="bi bi-box-arrow-up-right"></i> View Live
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div id="saveAlert" class="alert d-none mb-3"></div>
+
+<div class="row g-4">
+  <!-- ── Left: main editor ─────────────────────────────────────────────── -->
+  <div class="col-lg-8">
+
+    <!-- Title -->
+    <div class="editor-card mb-3">
+      <label class="editor-label">Title</label>
+      <input type="text" id="fTitle" class="form-control bg-dark text-white border-secondary"
+             value="{{ article.title }}" />
+    </div>
+
+    <!-- Content editor -->
+    <div class="editor-card mb-3">
+      <label class="editor-label">Content</label>
+      <div id="quillEditor" style="min-height:450px;"></div>
+      <textarea id="fContent" class="d-none">{{ article.html_content }}</textarea>
+    </div>
+
+    <!-- Meta description -->
+    <div class="editor-card mb-3">
+      <label class="editor-label">
+        Meta Description
+        <span class="text-muted small ms-2" id="metaLen">0 / 160</span>
+      </label>
+      <textarea id="fMeta" class="form-control bg-dark text-white border-secondary" rows="3"
+                maxlength="160" oninput="document.getElementById('metaLen').textContent=this.value.length+' / 160'"
+      >{{ article.meta_description }}</textarea>
+    </div>
+
+    <!-- WordPress info (if published) -->
+    {% if article.wp_post_id %}
+    <div class="editor-card mb-3 border-success">
+      <label class="editor-label text-success"><i class="bi bi-check-circle me-1"></i>Published on WordPress</label>
+      <div class="d-flex gap-2 flex-wrap mt-1">
+        <a href="{{ article.wp_post_url }}" target="_blank" class="btn btn-sm btn-outline-success">View Post</a>
+        <a href="{{ article.wp_edit_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">WP Admin Edit</a>
+        <span class="text-muted small align-self-center">Post ID: {{ article.wp_post_id }} &middot; via {{ article.wp_method }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ── Right: settings panel ────────────────────────────────────────── -->
+  <div class="col-lg-4">
+
+    <!-- Featured image -->
+    <div class="editor-card mb-3">
+      <label class="editor-label">Featured Image</label>
+      <div class="image-preview-wrap" id="imagePreviewWrap">
+        {% if article.image_url %}
+        <img id="featuredImgPreview" src="{{ article.image_url }}" class="img-fluid rounded mb-2" />
+        {% else %}
+        <div class="image-placeholder" id="featuredImgPreview">
+          <i class="bi bi-image"></i><br/><span class="small text-muted">No image</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="d-flex gap-2 mt-2 flex-wrap">
+        <button class="btn btn-sm btn-outline-warning" onclick="regenImage()" id="regenBtn">
+          <i class="bi bi-arrow-clockwise"></i> Regenerate
+        </button>
+        <label class="btn btn-sm btn-outline-secondary mb-0" for="imageUpload">
+          <i class="bi bi-upload"></i> Upload
+        </label>
+        <input type="file" id="imageUpload" accept="image/*" class="d-none" onchange="uploadImage(this)" />
+      </div>
+      <div id="imageStatus" class="mt-2 small d-none"></div>
+    </div>
+
+    <!-- Tone selector -->
+    <div class="editor-card mb-3">
+      <label class="editor-label">Writing Tone</label>
+      <div class="tone-grid">
+        {% set current_tone = article.tone %}
+        {% for t in tones %}
+        <label class="tone-option {% if t == current_tone %}active{% endif %}" data-tone="{{ t }}">
+          <input type="radio" name="tone" value="{{ t }}" {% if t == current_tone %}checked{% endif %}
+                 class="d-none" onchange="selectTone('{{ t }}')"/>
+          <span class="tone-icon">
+            {% if t == 'professional' %}💼
+            {% elif t == 'casual' %}😊
+            {% elif t == 'educational' %}📚
+            {% elif t == 'conversational' %}💬
+            {% elif t == 'authoritative' %}🎯
+            {% elif t == 'witty' %}😄
+            {% else %}✍️{% endif %}
+          </span>
+          <span class="tone-name">{{ t|capitalize }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <p class="text-muted small mt-2 mb-0">
+        Changing tone will apply to the next regeneration, not the current text.
+      </p>
+    </div>
+
+    <!-- SEO settings -->
+    <div class="editor-card mb-3">
+      <label class="editor-label">SEO Settings</label>
+      <div class="mb-2">
+        <label class="form-label text-muted small">Focus Keyword</label>
+        <input type="text" id="fKeyword" class="form-control bg-dark text-white border-secondary form-control-sm"
+               value="{{ article.focus_keyword }}" />
+      </div>
+      <div class="mb-2">
+        <label class="form-label text-muted small">Slug</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-secondary text-muted border-secondary">/</span>
+          <input type="text" id="fSlug" class="form-control bg-dark text-white border-secondary"
+                 value="{{ article.slug }}" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Tags & categories -->
+    <div class="editor-card mb-3">
+      <label class="editor-label">Tags</label>
+      <input type="text" id="fTags" class="form-control bg-dark text-white border-secondary form-control-sm"
+             value="{{ article.tags | join(', ') }}"
+             placeholder="tag1, tag2, tag3" />
+      <label class="editor-label mt-3">Categories</label>
+      <input type="text" id="fCategories" class="form-control bg-dark text-white border-secondary form-control-sm"
+             value="{{ article.categories | join(', ') }}"
+             placeholder="Technology, Business" />
+    </div>
+
+    <!-- Danger zone -->
+    <div class="editor-card border-danger mb-3">
+      <label class="editor-label text-danger">Danger Zone</label>
+      <button class="btn btn-sm btn-outline-danger w-100" onclick="deleteAndRedirect()">
+        <i class="bi bi-trash"></i> Delete Article
+      </button>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
+<script>
+const ARTICLE_ID = {{ article.id }};
+let selectedTone = '{{ article.tone }}';
+
+// ── Quill editor init ────────────────────────────────────────────────────────
+const quill = new Quill('#quillEditor', {
+  theme: 'snow',
+  modules: {
+    toolbar: [
+      [{ header: [1,2,3,false] }],
+      ['bold','italic','underline','strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['link','blockquote','code-block'],
+      ['clean']
+    ]
+  }
+});
+
+// Load existing HTML content into Quill
+const rawHtml = document.getElementById('fContent').value;
+quill.clipboard.dangerouslyPasteHTML(rawHtml);
+
+// Update meta description counter on load
+const meta = document.getElementById('fMeta');
+document.getElementById('metaLen').textContent = meta.value.length + ' / 160';
+
+// ── Tone selection ───────────────────────────────────────────────────────────
+function selectTone(tone) {
+  selectedTone = tone;
+  document.querySelectorAll('.tone-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.tone === tone);
+  });
+}
+
+// ── Save ─────────────────────────────────────────────────────────────────────
+async function saveArticle(newStatus) {
+  const html = quill.root.innerHTML;
+  const tagsRaw = document.getElementById('fTags').value;
+  const catsRaw = document.getElementById('fCategories').value;
+
+  const payload = {
+    title: document.getElementById('fTitle').value.trim(),
+    html_content: html,
+    meta_description: document.getElementById('fMeta').value.trim(),
+    focus_keyword: document.getElementById('fKeyword').value.trim(),
+    slug: document.getElementById('fSlug').value.trim(),
+    tone: selectedTone,
+    tags: tagsRaw.split(',').map(t => t.trim()).filter(Boolean),
+    categories: catsRaw.split(',').map(c => c.trim()).filter(Boolean),
+    status: newStatus,
+  };
+
+  const alert = document.getElementById('saveAlert');
+  alert.className = 'alert alert-info mb-3';
+  alert.textContent = 'Saving…';
+  alert.classList.remove('d-none');
+
+  try {
+    const r = await fetch(`/api/articles/${ARTICLE_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    alert.className = 'alert alert-success mb-3';
+    alert.textContent = '✓ Saved successfully';
+    setTimeout(() => alert.classList.add('d-none'), 2500);
+  } catch(e) {
+    alert.className = 'alert alert-danger mb-3';
+    alert.textContent = 'Save failed: ' + e.message;
+  }
+}
+
+// ── Publish ──────────────────────────────────────────────────────────────────
+async function publishNow() {
+  await saveArticle('ready');
+  if (!confirm('Publish this article to WordPress now?')) return;
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Publishing…';
+
+  const r = await fetch(`/api/articles/${ARTICLE_ID}/publish`, { method: 'POST' });
+  const data = await r.json();
+
+  // Poll for completion
+  const poll = async () => {
+    const jr = await fetch(`/api/articles`);
+    const arts = await jr.json();
+    const a = arts.find(x => x.id === ARTICLE_ID);
+    if (a && a.status === 'published') {
+      location.reload();
+    } else if (a && a.status === 'failed') {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send"></i> Publish to WP';
+      showAlert('danger', 'Publishing failed. Check logs.');
+    } else {
+      setTimeout(poll, 3000);
+    }
+  };
+  poll();
+}
+
+// ── Image regen ──────────────────────────────────────────────────────────────
+async function regenImage() {
+  const btn = document.getElementById('regenBtn');
+  const status = document.getElementById('imageStatus');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  status.textContent = 'Regenerating image (~30s)…';
+  status.className = 'mt-2 small text-info';
+  status.classList.remove('d-none');
+
+  await fetch(`/api/articles/${ARTICLE_ID}/regen-image`, { method: 'POST' });
+
+  // Poll for the new image (check updated_at changes)
+  let attempts = 0;
+  const pollImage = async () => {
+    attempts++;
+    if (attempts > 60) {
+      status.textContent = 'Timed out waiting for image.';
+      status.className = 'mt-2 small text-danger';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Regenerate';
+      return;
+    }
+    const r = await fetch('/api/articles');
+    const arts = await r.json();
+    const a = arts.find(x => x.id === ARTICLE_ID);
+    // Reload page to show new image
+    if (a) {
+      location.reload();
+    } else {
+      setTimeout(pollImage, 3000);
+    }
+  };
+  setTimeout(pollImage, 8000);
+}
+
+// ── Image upload ─────────────────────────────────────────────────────────────
+async function uploadImage(input) {
+  if (!input.files.length) return;
+  const status = document.getElementById('imageStatus');
+  status.textContent = 'Uploading…';
+  status.className = 'mt-2 small text-info';
+  status.classList.remove('d-none');
+
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  const r = await fetch(`/api/articles/${ARTICLE_ID}/upload-image`, {
+    method: 'POST', body: formData
+  });
+  if (r.ok) {
+    status.textContent = 'Upload successful! Reloading…';
+    status.className = 'mt-2 small text-success';
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    status.textContent = 'Upload failed.';
+    status.className = 'mt-2 small text-danger';
+  }
+}
+
+// ── Delete ───────────────────────────────────────────────────────────────────
+async function deleteAndRedirect() {
+  if (!confirm('Delete this article permanently?')) return;
+  await fetch(`/api/articles/${ARTICLE_ID}`, { method: 'DELETE' });
+  location.href = '/';
+}
+
+function showAlert(type, msg) {
+  const el = document.getElementById('saveAlert');
+  el.className = `alert alert-${type} mb-3`;
+  el.textContent = msg;
+  el.classList.remove('d-none');
+}
+</script>
+{% endblock %}
