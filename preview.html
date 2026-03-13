@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ArticleBot – UI Preview</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+<style>
+/* ── Design tokens ─────────────────────────────────────────────────────── */
+:root{
+  --bg:#0d0f14;--sidebar-bg:#111318;--card-bg:#181b22;
+  --border:#2a2d36;--accent:#6c63ff;--text:#e2e5ef;--muted:#6b7280;
+  --green:#22c55e;--yellow:#eab308;--red:#ef4444;--blue:#3b82f6;
+  --sidebar-w:220px;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;min-height:100vh}
+
+/* ── Preview banner ────────────────────────────────────────────────────── */
+.preview-banner{
+  position:fixed;top:0;left:0;right:0;z-index:9999;
+  background:linear-gradient(90deg,#6c63ff,#a855f7);
+  color:#fff;font-size:.8rem;font-weight:600;
+  text-align:center;padding:.35rem;letter-spacing:.04em;
+}
+body{padding-top:2rem}
+
+/* ── Screen switcher ───────────────────────────────────────────────────── */
+.screen-tabs{
+  position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);
+  z-index:9000;display:flex;gap:.5rem;
+  background:rgba(17,19,24,.95);border:1px solid var(--border);
+  border-radius:999px;padding:.35rem .5rem;
+  backdrop-filter:blur(10px);
+}
+.screen-tab{
+  border:none;background:transparent;color:var(--muted);
+  padding:.3rem .85rem;border-radius:999px;font-size:.8rem;
+  font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.screen-tab.active{background:var(--accent);color:#fff}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+.sidebar{
+  position:fixed;top:2rem;left:0;width:var(--sidebar-w);height:calc(100vh - 2rem);
+  background:var(--sidebar-bg);border-right:1px solid var(--border);
+  padding:1.5rem 1rem;display:flex;flex-direction:column;z-index:100;overflow-y:auto;
+}
+.sidebar-brand{font-size:1.1rem;font-weight:700;color:var(--accent);letter-spacing:-.02em;
+  padding-bottom:1.5rem;border-bottom:1px solid var(--border);margin-bottom:1.25rem;}
+.sidebar-nav{display:flex;flex-direction:column;gap:.25rem}
+.sidebar-nav .nav-link{display:flex;align-items:center;gap:.625rem;color:var(--muted);
+  padding:.5rem .75rem;border-radius:8px;font-size:.9rem;text-decoration:none;border:none;
+  background:none;cursor:pointer;transition:background .15s,color .15s;}
+.sidebar-nav .nav-link:hover{background:rgba(108,99,255,.12);color:var(--text)}
+.sidebar-nav .nav-link.active{background:rgba(108,99,255,.2);color:var(--accent);font-weight:600}
+.sidebar-divider{border-color:var(--border);margin:.75rem 0}
+
+/* ── Main ──────────────────────────────────────────────────────────────── */
+.main-content{margin-left:var(--sidebar-w);padding:2rem;min-height:100vh}
+.page-title{font-size:1.6rem;font-weight:700;margin:0}
+.page-subtitle{font-size:.875rem;margin:.25rem 0 0}
+.page-header{margin-bottom:1.75rem}
+
+/* ── Stat cards ────────────────────────────────────────────────────────── */
+.stat-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center}
+.stat-value{font-size:2rem;font-weight:700;line-height:1}
+.stat-label{font-size:.8rem;color:var(--muted);margin-top:.35rem}
+.stat-card--green{border-color:rgba(34,197,94,.3)}.stat-card--green .stat-value{color:var(--green)}
+.stat-card--yellow{border-color:rgba(234,179,8,.3)}.stat-card--yellow .stat-value{color:var(--yellow)}
+.stat-card--blue{border-color:rgba(59,130,246,.3)}.stat-card--blue .stat-value{color:var(--blue)}
+
+/* ── Article grid ──────────────────────────────────────────────────────── */
+.article-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.25rem}
+.article-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s,transform .15s}
+.article-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.article-thumb{position:relative;width:100%;aspect-ratio:16/9;background:#1e2130;overflow:hidden}
+.article-thumb img{width:100%;height:100%;object-fit:cover}
+.article-thumb-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+
+.status-badge{position:absolute;top:.5rem;right:.5rem;padding:.2rem .6rem;border-radius:20px;
+  font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.status-draft{background:rgba(107,114,128,.8);color:#fff}
+.status-ready{background:rgba(59,130,246,.8);color:#fff}
+.status-publishing{background:rgba(234,179,8,.8);color:#000}
+.status-published{background:rgba(34,197,94,.8);color:#000}
+.status-failed{background:rgba(239,68,68,.8);color:#fff}
+
+.article-card-body{padding:.875rem;flex:1}
+.article-tone-badge{font-size:.72rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem}
+.article-title{font-size:.95rem;font-weight:600;margin:0 0 .375rem;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.article-meta{font-size:.8rem;color:var(--muted);margin:0 0 .5rem;line-height:1.4}
+.article-tags{display:flex;flex-wrap:wrap;gap:.25rem;margin-bottom:.4rem}
+.tag{font-size:.7rem;padding:.1rem .5rem;border-radius:20px}
+.tag--cat{background:rgba(108,99,255,.2);color:var(--accent)}
+.tag--tag{background:rgba(255,255,255,.08);color:var(--muted)}
+.article-date{font-size:.75rem}
+.article-card-actions{padding:.625rem .875rem;border-top:1px solid var(--border);display:flex;gap:.4rem;flex-wrap:wrap}
+
+/* ── Editor card ───────────────────────────────────────────────────────── */
+.editor-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+.editor-label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:.625rem}
+
+/* ── Mock rich editor ──────────────────────────────────────────────────── */
+.mock-editor{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.mock-editor-toolbar{background:#1e2130;border-bottom:1px solid var(--border);padding:.5rem .75rem;
+  display:flex;gap:.75rem;flex-wrap:wrap}
+.mock-editor-toolbar span{color:var(--muted);font-size:.8rem;cursor:pointer}
+.mock-editor-toolbar span:hover{color:var(--text)}
+.mock-editor-body{background:#1a1d27;padding:1rem;min-height:300px;font-size:.9rem;
+  color:var(--text);line-height:1.7}
+.mock-editor-body h1{font-size:1.4rem;font-weight:700;margin-bottom:.75rem}
+.mock-editor-body h2{font-size:1.1rem;font-weight:600;margin:1.25rem 0 .5rem;color:#a5b4fc}
+.mock-editor-body p{margin-bottom:.75rem;color:#c4c9d8}
+.mock-editor-body ul{padding-left:1.25rem;margin-bottom:.75rem;color:#c4c9d8}
+
+/* ── Tone grid ─────────────────────────────────────────────────────────── */
+.tone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+.tone-option{display:flex;flex-direction:column;align-items:center;gap:.25rem;
+  padding:.6rem .4rem;border-radius:10px;background:#1e2130;border:1.5px solid transparent;
+  cursor:pointer;transition:border-color .15s,background .15s;text-align:center}
+.tone-option:hover{border-color:var(--accent);background:rgba(108,99,255,.1)}
+.tone-option.active{border-color:var(--accent);background:rgba(108,99,255,.2)}
+.tone-icon{font-size:1.4rem}.tone-name{font-size:.72rem;color:var(--muted);text-transform:capitalize;font-weight:500}
+.tone-option.active .tone-name{color:var(--accent)}
+
+/* ── Image preview ─────────────────────────────────────────────────────── */
+.image-preview-wrap{border-radius:8px;overflow:hidden;background:#1a1d27}
+
+/* ── Schedule card ─────────────────────────────────────────────────────── */
+.schedule-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+
+/* ── Empty state ───────────────────────────────────────────────────────── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:5rem 2rem;color:var(--muted);text-align:center}
+.empty-state i{font-size:3.5rem;margin-bottom:1rem;color:var(--border)}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media(max-width:768px){
+  .sidebar{width:100%;height:auto;position:relative;top:0}
+  .main-content{margin-left:0;padding:1rem}
+  .article-grid{grid-template-columns:1fr}
+  .tone-grid{grid-template-columns:repeat(2,1fr)}
+  body{padding-top:2rem}
+  .sidebar{top:0}
+  .screen-tabs{bottom:.75rem;font-size:.75rem}
+  .screen-tab{padding:.25rem .6rem}
+}
+</style>
+</head>
+<body>
+
+<!-- Preview banner -->
+<div class="preview-banner">
+  👀 UI PREVIEW — Static mockup, no server required &nbsp;|&nbsp;
+  Switch screens using the tabs below
+</div>
+
+<!-- ── Sidebar (shared) ───────────────────────────────────────────────────── -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <i class="bi bi-pencil-square me-2"></i>ArticleBot
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-link active" onclick="showScreen('dashboard',this)">
+      <i class="bi bi-grid-3x3-gap"></i> Dashboard
+    </a>
+    <a href="#" class="nav-link" onclick="showScreen('schedules',this)">
+      <i class="bi bi-calendar-week"></i> Schedules
+    </a>
+    <hr class="sidebar-divider"/>
+    <button class="nav-link w-100 text-start" data-bs-toggle="modal" data-bs-target="#generateModal">
+      <i class="bi bi-plus-circle"></i> Generate Article
+    </button>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1 – Dashboard                                                       -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="main-content" id="screen-dashboard">
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <div>
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-subtitle text-muted">Manage, edit, and publish your generated articles</p>
+    </div>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#generateModal">
+      <i class="bi bi-plus-lg me-1"></i> New Article
+    </button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">12</div><div class="stat-label">Total Articles</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card stat-card--green"><div class="stat-value">7</div><div class="stat-label">Published</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card stat-card--yellow"><div class="stat-value">3</div><div class="stat-label">Drafts</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card stat-card--blue"><div class="stat-value">2</div><div class="stat-label">Ready to Publish</div></div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+    <input type="text" placeholder="Search articles…" class="form-control form-control-sm bg-dark text-white border-secondary" style="max-width:240px;"/>
+    <select class="form-select form-select-sm bg-dark text-white border-secondary" style="max-width:160px;">
+      <option>All statuses</option><option>Draft</option><option>Ready</option><option>Published</option>
+    </select>
+    <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-search"></i></button>
+  </div>
+
+  <!-- Article grid -->
+  <div class="article-grid">
+
+    <!-- Card 1 – published -->
+    <div class="article-card">
+      <div class="article-thumb">
+        <img src="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=480&q=80" alt="AI tools"/>
+        <span class="status-badge status-published">published</span>
+      </div>
+      <div class="article-card-body">
+        <div class="article-tone-badge"><i class="bi bi-chat-quote me-1"></i>professional</div>
+        <h3 class="article-title">Best AI Tools for Small Business in 2025</h3>
+        <p class="article-meta">Discover the top AI-powered tools helping small businesses cut costs and automate operations this year…</p>
+        <div class="article-tags">
+          <span class="tag tag--cat">Technology</span>
+          <span class="tag tag--tag">ai tools</span>
+          <span class="tag tag--tag">small business</span>
+        </div>
+        <p class="article-date text-muted small">2025-03-10</p>
+      </div>
+      <div class="article-card-actions">
+        <button class="btn btn-sm btn-outline-light" onclick="showScreen('editor')"><i class="bi bi-pencil"></i> Edit</button>
+        <a href="#" class="btn btn-sm btn-outline-info"><i class="bi bi-box-arrow-up-right"></i></a>
+        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+      </div>
+    </div>
+
+    <!-- Card 2 – draft -->
+    <div class="article-card">
+      <div class="article-thumb">
+        <img src="https://images.unsplash.com/photo-1571019613914-85f342c6a11e?w=480&q=80" alt="Home gym"/>
+        <span class="status-badge status-draft">draft</span>
+      </div>
+      <div class="article-card-body">
+        <div class="article-tone-badge"><i class="bi bi-chat-quote me-1"></i>casual</div>
+        <h3 class="article-title">Home Gym Equipment Guide: Build Your Perfect Setup on Any Budget</h3>
+        <p class="article-meta">Whether you have a spare room or just a corner, we break down the best home gym gear for every budget…</p>
+        <div class="article-tags">
+          <span class="tag tag--cat">Health</span>
+          <span class="tag tag--tag">home gym</span>
+          <span class="tag tag--tag">fitness</span>
+        </div>
+        <p class="article-date text-muted small">2025-03-11</p>
+      </div>
+      <div class="article-card-actions">
+        <button class="btn btn-sm btn-outline-light" onclick="showScreen('editor')"><i class="bi bi-pencil"></i> Edit</button>
+        <button class="btn btn-sm btn-success"><i class="bi bi-send"></i> Publish</button>
+        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+      </div>
+    </div>
+
+    <!-- Card 3 – ready -->
+    <div class="article-card">
+      <div class="article-thumb">
+        <img src="https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=480&q=80" alt="EV"/>
+        <span class="status-badge status-ready">ready</span>
+      </div>
+      <div class="article-card-body">
+        <div class="article-tone-badge"><i class="bi bi-chat-quote me-1"></i>educational</div>
+        <h3 class="article-title">Electric Vehicles 2025: The Complete Buyer's Guide for UK Drivers</h3>
+        <p class="article-meta">Everything UK drivers need to know about buying an EV in 2025 — range, charging, grants, and top picks…</p>
+        <div class="article-tags">
+          <span class="tag tag--cat">Automotive</span>
+          <span class="tag tag--tag">electric vehicles</span>
+          <span class="tag tag--tag">UK</span>
+        </div>
+        <p class="article-date text-muted small">2025-03-12</p>
+      </div>
+      <div class="article-card-actions">
+        <button class="btn btn-sm btn-outline-light" onclick="showScreen('editor')"><i class="bi bi-pencil"></i> Edit</button>
+        <button class="btn btn-sm btn-success"><i class="bi bi-send"></i> Publish</button>
+        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+      </div>
+    </div>
+
+    <!-- Card 4 – publishing -->
+    <div class="article-card">
+      <div class="article-thumb">
+        <img src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=480&q=80" alt="Keto"/>
+        <span class="status-badge status-publishing">publishing…</span>
+      </div>
+      <div class="article-card-body">
+        <div class="article-tone-badge"><i class="bi bi-chat-quote me-1"></i>authoritative</div>
+        <h3 class="article-title">Keto Diet for Beginners: Science-Backed Guide to Getting Started</h3>
+        <p class="article-meta">The ketogenic diet has helped millions lose weight. Here's what the science says and how to start safely…</p>
+        <div class="article-tags">
+          <span class="tag tag--cat">Nutrition</span>
+          <span class="tag tag--tag">keto</span>
+          <span class="tag tag--tag">diet</span>
+        </div>
+        <p class="article-date text-muted small">2025-03-13</p>
+      </div>
+      <div class="article-card-actions">
+        <button class="btn btn-sm btn-outline-light"><i class="bi bi-pencil"></i> Edit</button>
+        <button class="btn btn-sm btn-outline-secondary" disabled><span class="spinner-border spinner-border-sm me-1"></span>Publishing</button>
+      </div>
+    </div>
+
+    <!-- Card 5 – witty draft -->
+    <div class="article-card">
+      <div class="article-thumb">
+        <img src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=480&q=80" alt="Travel"/>
+        <span class="status-badge status-draft">draft</span>
+      </div>
+      <div class="article-card-body">
+        <div class="article-tone-badge"><i class="bi bi-chat-quote me-1"></i>witty</div>
+        <h3 class="article-title">27 Travel Hacks That'll Make You Feel Like a Seasoned Nomad</h3>
+        <p class="article-meta">We tested these travel hacks so you don't have to. Some are genius. Some are obvious. All are worth knowing…</p>
+        <div class="article-tags">
+          <span class="tag tag--cat">Travel</span>
+          <span class="tag tag--tag">travel tips</span>
+          <span class="tag tag--tag">hacks</span>
+        </div>
+        <p class="article-date text-muted small">2025-03-13</p>
+      </div>
+      <div class="article-card-actions">
+        <button class="btn btn-sm btn-outline-light" onclick="showScreen('editor')"><i class="bi bi-pencil"></i> Edit</button>
+        <button class="btn btn-sm btn-success"><i class="bi bi-send"></i> Publish</button>
+        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+      </div>
+    </div>
+
+    <!-- Card 6 – conversational -->
+    <div class="article-card">
+      <div class="article-thumb">
+        <div class="article-thumb-placeholder"><i class="bi bi-image text-muted" style="font-size:2rem;"></i></div>
+        <span class="status-badge status-draft">draft</span>
+      </div>
+      <div class="article-card-body">
+        <div class="article-tone-badge"><i class="bi bi-chat-quote me-1"></i>conversational</div>
+        <h3 class="article-title">What Is Passive Income and How Do You Actually Build It?</h3>
+        <p class="article-meta">Let's talk about passive income — what it really is, what it isn't, and which strategies are worth your time in 2025…</p>
+        <div class="article-tags">
+          <span class="tag tag--cat">Finance</span>
+          <span class="tag tag--tag">passive income</span>
+        </div>
+        <p class="article-date text-muted small">2025-03-13</p>
+      </div>
+      <div class="article-card-actions">
+        <button class="btn btn-sm btn-outline-light" onclick="showScreen('editor')"><i class="bi bi-pencil"></i> Edit</button>
+        <button class="btn btn-sm btn-success"><i class="bi bi-send"></i> Publish</button>
+        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /screen-dashboard -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2 – Article Editor                                                  -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="main-content d-none" id="screen-editor">
+
+  <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="showScreen('dashboard')"><i class="bi bi-arrow-left"></i></button>
+      <span class="page-title">Edit Article</span>
+      <span class="status-badge status-draft ms-1" style="position:static;">draft</span>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-secondary btn-sm"><i class="bi bi-floppy"></i> Save Draft</button>
+      <button class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> Mark Ready</button>
+      <button class="btn btn-success btn-sm"><i class="bi bi-send"></i> Publish to WP</button>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left: editor -->
+    <div class="col-lg-8">
+
+      <div class="editor-card mb-3">
+        <label class="editor-label">Title</label>
+        <input type="text" class="form-control bg-dark text-white border-secondary"
+               value="Home Gym Equipment Guide: Build Your Perfect Setup on Any Budget"/>
+      </div>
+
+      <div class="editor-card mb-3">
+        <label class="editor-label">Content</label>
+        <div class="mock-editor">
+          <div class="mock-editor-toolbar">
+            <span><strong>H1</strong></span><span><strong>H2</strong></span><span><strong>H3</strong></span>
+            <span>|</span>
+            <span><strong>B</strong></span><span><em>I</em></span><span><u>U</u></span>
+            <span>|</span>
+            <span><i class="bi bi-list-ul"></i></span><span><i class="bi bi-list-ol"></i></span>
+            <span><i class="bi bi-link-45deg"></i></span><span><i class="bi bi-quote"></i></span>
+            <span>|</span>
+            <span><i class="bi bi-eraser"></i></span>
+          </div>
+          <div class="mock-editor-body">
+            <h1>Home Gym Equipment Guide: Build Your Perfect Setup on Any Budget</h1>
+            <p><strong>TL;DR:</strong> You don't need a massive space or a huge budget to build an effective home gym. Whether you're spending $200 or $2,000, the right equipment mix can give you a full-body workout without ever leaving the house.</p>
+            <h2>Why Build a Home Gym in 2025?</h2>
+            <p>The home fitness industry exploded after 2020 and hasn't looked back. According to recent data, over 40% of people who started working out at home have never returned to a commercial gym full-time…</p>
+            <h2>Budget Tier Breakdown</h2>
+            <ul>
+              <li><strong>Under $300:</strong> Resistance bands, adjustable dumbbells, pull-up bar</li>
+              <li><strong>$300–$800:</strong> Add a barbell set, flat bench, and jump rope</li>
+              <li><strong>$800–$2,000:</strong> Full rack system, cable attachment, cardio equipment</li>
+            </ul>
+            <h2>Essential Equipment by Goal</h2>
+            <p>Your equipment choices should align with your training goals. Strength-focused athletes need different tools than cardio enthusiasts…</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-card mb-3">
+        <label class="editor-label">Meta Description <span class="text-muted small ms-2">118 / 160</span></label>
+        <textarea class="form-control bg-dark text-white border-secondary" rows="3"
+        >Build the perfect home gym on any budget. Our 2025 guide covers the best equipment, budget tiers, and setup tips for every fitness goal.</textarea>
+      </div>
+
+    </div>
+
+    <!-- Right: settings -->
+    <div class="col-lg-4">
+
+      <!-- Featured image -->
+      <div class="editor-card mb-3">
+        <label class="editor-label">Featured Image</label>
+        <div class="image-preview-wrap">
+          <img src="https://images.unsplash.com/photo-1571019613914-85f342c6a11e?w=480&q=80"
+               class="img-fluid rounded mb-2" alt="Home gym"/>
+        </div>
+        <div class="d-flex gap-2 mt-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-arrow-clockwise"></i> Regenerate
+          </button>
+          <label class="btn btn-sm btn-outline-secondary mb-0">
+            <i class="bi bi-upload"></i> Upload Custom
+          </label>
+        </div>
+      </div>
+
+      <!-- Tone selector -->
+      <div class="editor-card mb-3">
+        <label class="editor-label">Writing Tone</label>
+        <div class="tone-grid">
+          <label class="tone-option" data-tone="professional" onclick="pickTone(this)">
+            <span class="tone-icon">💼</span><span class="tone-name">Professional</span>
+          </label>
+          <label class="tone-option active" data-tone="casual" onclick="pickTone(this)">
+            <span class="tone-icon">😊</span><span class="tone-name">Casual</span>
+          </label>
+          <label class="tone-option" data-tone="educational" onclick="pickTone(this)">
+            <span class="tone-icon">📚</span><span class="tone-name">Educational</span>
+          </label>
+          <label class="tone-option" data-tone="conversational" onclick="pickTone(this)">
+            <span class="tone-icon">💬</span><span class="tone-name">Conversational</span>
+          </label>
+          <label class="tone-option" data-tone="authoritative" onclick="pickTone(this)">
+            <span class="tone-icon">🎯</span><span class="tone-name">Authoritative</span>
+          </label>
+          <label class="tone-option" data-tone="witty" onclick="pickTone(this)">
+            <span class="tone-icon">😄</span><span class="tone-name">Witty</span>
+          </label>
+        </div>
+        <p class="text-muted small mt-2 mb-0">Tone applies on next regeneration.</p>
+      </div>
+
+      <!-- SEO -->
+      <div class="editor-card mb-3">
+        <label class="editor-label">SEO Settings</label>
+        <div class="mb-2">
+          <label class="form-label text-muted small">Focus Keyword</label>
+          <input type="text" class="form-control bg-dark text-white border-secondary form-control-sm"
+                 value="home gym equipment"/>
+        </div>
+        <div class="mb-2">
+          <label class="form-label text-muted small">Slug</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-secondary text-muted border-secondary">/</span>
+            <input type="text" class="form-control bg-dark text-white border-secondary"
+                   value="home-gym-equipment-guide"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tags & Categories -->
+      <div class="editor-card mb-3">
+        <label class="editor-label">Tags</label>
+        <input type="text" class="form-control bg-dark text-white border-secondary form-control-sm"
+               value="home gym, fitness, exercise equipment, budget workout"/>
+        <label class="editor-label mt-3">Categories</label>
+        <input type="text" class="form-control bg-dark text-white border-secondary form-control-sm"
+               value="Health, Fitness"/>
+      </div>
+
+      <!-- Danger zone -->
+      <div class="editor-card border-danger mb-3">
+        <label class="editor-label text-danger">Danger Zone</label>
+        <button class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash"></i> Delete Article</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-editor -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 3 – Schedules                                                       -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="main-content d-none" id="screen-schedules">
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <div>
+      <h1 class="page-title">Schedules</h1>
+      <p class="page-subtitle text-muted">Auto-generate 1–5 articles per day per category</p>
+    </div>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newScheduleModal">
+      <i class="bi bi-plus-lg me-1"></i> New Schedule
+    </button>
+  </div>
+
+  <div class="row g-3">
+    <!-- Schedule 1 -->
+    <div class="col-md-6 col-xl-4">
+      <div class="schedule-card">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h5 class="mb-0 text-white">Technology</h5>
+            <span class="text-muted small">3 articles/day &middot; 09:00 UTC</span>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" checked/>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          <span class="badge bg-secondary">professional</span>
+          <span class="badge bg-secondary">en/US</span>
+          <span class="badge bg-secondary">dalle</span>
+          <span class="badge bg-warning text-dark">save as draft</span>
+        </div>
+        <p class="text-muted small mb-2">Last run: 2025-03-13 09:00</p>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-light flex-grow-1"><i class="bi bi-pencil"></i> Edit</button>
+          <button class="btn btn-sm btn-outline-warning" title="Run now"><i class="bi bi-lightning-charge"></i></button>
+          <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+    </div>
+    <!-- Schedule 2 -->
+    <div class="col-md-6 col-xl-4">
+      <div class="schedule-card">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h5 class="mb-0 text-white">Health & Fitness</h5>
+            <span class="text-muted small">2 articles/day &middot; 14:00 UTC</span>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" checked/>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          <span class="badge bg-secondary">casual</span>
+          <span class="badge bg-secondary">en/UK</span>
+          <span class="badge bg-secondary">gemini</span>
+          <span class="badge bg-success">auto-publish</span>
+        </div>
+        <p class="text-muted small mb-2">Last run: 2025-03-13 14:00</p>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-light flex-grow-1"><i class="bi bi-pencil"></i> Edit</button>
+          <button class="btn btn-sm btn-outline-warning"><i class="bi bi-lightning-charge"></i></button>
+          <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+    </div>
+    <!-- Schedule 3 (disabled) -->
+    <div class="col-md-6 col-xl-4">
+      <div class="schedule-card opacity-50">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h5 class="mb-0 text-white">Finance</h5>
+            <span class="text-muted small">1 article/day &middot; 08:00 UTC</span>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"/>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          <span class="badge bg-secondary">authoritative</span>
+          <span class="badge bg-secondary">en/US</span>
+          <span class="badge bg-secondary">dalle</span>
+          <span class="badge bg-warning text-dark">save as draft</span>
+        </div>
+        <p class="text-muted small mb-2">Disabled</p>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-light flex-grow-1"><i class="bi bi-pencil"></i> Edit</button>
+          <button class="btn btn-sm btn-outline-warning"><i class="bi bi-lightning-charge"></i></button>
+          <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New schedule form preview -->
+  <div class="mt-4">
+    <h6 class="text-muted mb-3"><i class="bi bi-plus-circle me-1"></i>New Schedule form (click "New Schedule" above for the real modal)</h6>
+    <div class="editor-card" style="max-width:600px;opacity:.6;pointer-events:none;">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label text-muted small">Category / Topic Area</label>
+          <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Travel, Food, Business"/>
+        </div>
+        <div class="col-6">
+          <label class="form-label text-muted small">Articles per day</label>
+          <div class="d-flex align-items-center gap-3">
+            <input type="range" min="1" max="5" value="2" class="form-range flex-grow-1"/>
+            <span class="badge bg-primary fs-6">2</span>
+          </div>
+        </div>
+        <div class="col-6">
+          <label class="form-label text-muted small">Publish time (UTC)</label>
+          <select class="form-select bg-dark text-white border-secondary"><option>09:00 UTC</option></select>
+        </div>
+        <div class="col-6">
+          <label class="form-label text-muted small">Tone</label>
+          <select class="form-select bg-dark text-white border-secondary"><option>Professional</option></select>
+        </div>
+        <div class="col-6">
+          <label class="form-label text-muted small">After generation</label>
+          <select class="form-select bg-dark text-white border-secondary"><option>Save as Draft</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-schedules -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- Generate Article Modal                                                      -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="generateModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-white border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Generate New Article</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label text-muted small">Topic / Title</label>
+          <input type="text" class="form-control bg-secondary text-white border-0"
+                 placeholder="e.g. best AI tools for small business" id="previewTopic"/>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-muted small">Tone</label>
+            <select class="form-select bg-secondary text-white border-0">
+              <option>Professional</option><option>Casual</option><option>Educational</option>
+              <option>Conversational</option><option>Authoritative</option><option>Witty</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small">Image Provider</label>
+            <select class="form-select bg-secondary text-white border-0">
+              <option>DALL-E 3</option><option>Gemini Imagen</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-4"><label class="form-label text-muted small">Country</label>
+            <input type="text" class="form-control bg-secondary text-white border-0" value="US" maxlength="3"/></div>
+          <div class="col-4"><label class="form-label text-muted small">Language</label>
+            <input type="text" class="form-control bg-secondary text-white border-0" value="en" maxlength="5"/></div>
+          <div class="col-4"><label class="form-label text-muted small">Category</label>
+            <input type="text" class="form-control bg-secondary text-white border-0" placeholder="optional"/></div>
+        </div>
+        <div class="mt-3 d-none" id="previewGenStatus">
+          <div class="d-flex align-items-center gap-2 text-info">
+            <div class="spinner-border spinner-border-sm"></div>
+            <span>Generating… this takes ~60 seconds</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="previewGenerate()">
+          <i class="bi bi-lightning-charge"></i> Generate
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen switcher tabs ──────────────────────────────────────────────── -->
+<div class="screen-tabs">
+  <button class="screen-tab active" id="tab-dashboard" onclick="showScreen('dashboard',null,'tab-dashboard')">
+    <i class="bi bi-grid-3x3-gap me-1"></i>Dashboard
+  </button>
+  <button class="screen-tab" id="tab-editor" onclick="showScreen('editor',null,'tab-editor')">
+    <i class="bi bi-pencil me-1"></i>Editor
+  </button>
+  <button class="screen-tab" id="tab-schedules" onclick="showScreen('schedules',null,'tab-schedules')">
+    <i class="bi bi-calendar-week me-1"></i>Schedules
+  </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function showScreen(name, linkEl, tabId) {
+  // Hide all screens
+  ['dashboard','editor','schedules'].forEach(s => {
+    document.getElementById('screen-'+s).classList.add('d-none');
+  });
+  document.getElementById('screen-'+name).classList.remove('d-none');
+
+  // Update sidebar active
+  document.querySelectorAll('.sidebar-nav .nav-link').forEach(l => l.classList.remove('active'));
+  if (linkEl) linkEl.classList.add('active');
+
+  // Update bottom tabs
+  document.querySelectorAll('.screen-tab').forEach(t => t.classList.remove('active'));
+  const activeTab = tabId ? document.getElementById(tabId) : document.getElementById('tab-'+name);
+  if (activeTab) activeTab.classList.add('active');
+
+  return false;
+}
+
+function pickTone(el) {
+  document.querySelectorAll('.tone-option').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function previewGenerate() {
+  const topic = document.getElementById('previewTopic').value.trim();
+  if (!topic) { alert('Enter a topic first!'); return; }
+  document.getElementById('previewGenStatus').classList.remove('d-none');
+  // In the real app this calls /api/generate
+  setTimeout(() => {
+    bootstrap.Modal.getInstance(document.getElementById('generateModal')).hide();
+    document.getElementById('previewGenStatus').classList.add('d-none');
+    showScreen('editor', null, 'tab-editor');
+  }, 2000);
+}
+</script>
+</body>
+</html>
