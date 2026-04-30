@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super Mario Spelling Adventure</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    background: #5C94FC;
+    color: #fff;
+    overflow-x: hidden;
+    user-select: none;
+  }
+
+  /* Sky + clouds + ground */
+  #world {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(#5C94FC 0%, #5C94FC 75%, #DEA973 75%, #C84C0C 100%);
+    z-index: -2;
+    overflow: hidden;
+  }
+  .cloud {
+    position: absolute;
+    width: 90px; height: 30px;
+    background: #fff;
+    border-radius: 30px;
+    box-shadow:
+      20px -10px 0 5px #fff,
+      45px -5px 0 0 #fff,
+      -20px 0 0 -5px #fff;
+    animation: drift 60s linear infinite;
+  }
+  .cloud:nth-child(1) { top: 10%; left: -100px; animation-delay: 0s; }
+  .cloud:nth-child(2) { top: 25%; left: -100px; animation-delay: -20s; transform: scale(0.8); }
+  .cloud:nth-child(3) { top: 5%; left: -100px; animation-delay: -40s; transform: scale(1.2); }
+  .cloud:nth-child(4) { top: 35%; left: -100px; animation-delay: -10s; transform: scale(0.7); }
+  @keyframes drift {
+    from { transform: translateX(0); }
+    to { transform: translateX(120vw); }
+  }
+
+  .hill {
+    position: absolute;
+    bottom: 22%;
+    width: 200px;
+    height: 100px;
+    background: #00A800;
+    border-radius: 50% 50% 0 0;
+  }
+  .hill.h1 { left: 5%; }
+  .hill.h2 { right: 8%; transform: scale(0.7); }
+
+  .bush {
+    position: absolute;
+    bottom: 22%;
+    width: 80px;
+    height: 30px;
+    background: #00A800;
+    border-radius: 30px 30px 0 0;
+  }
+  .bush.b1 { left: 30%; }
+  .bush.b2 { right: 25%; }
+
+  /* Brick ground pattern */
+  .ground-line {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 22%;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 60px, rgba(0,0,0,0.25) 60px 62px),
+      repeating-linear-gradient(0deg, transparent 0 30px, rgba(0,0,0,0.25) 30px 32px),
+      #C84C0C;
+    z-index: -1;
+  }
+
+  /* HUD */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    background: rgba(0,0,0,0.4);
+    z-index: 10;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hud-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .coin-icon {
+    display: inline-block;
+    width: 18px; height: 18px;
+    background: #FFD700;
+    border-radius: 50%;
+    border: 2px solid #B8860B;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.3);
+    animation: spin 1.2s linear infinite;
+  }
+  @keyframes spin {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(0.2); }
+  }
+
+  /* Main stage */
+  #stage {
+    position: relative;
+    min-height: 100vh;
+    padding: 90px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .panel {
+    background: rgba(0,0,0,0.7);
+    border: 4px solid #fff;
+    border-radius: 8px;
+    padding: 28px 24px;
+    max-width: 720px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 0 0 4px #000, 8px 8px 0 #000;
+  }
+
+  h1 {
+    font-size: 28px;
+    color: #FFD700;
+    text-shadow: 3px 3px 0 #C84C0C, 6px 6px 0 #000;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  h2 {
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+  p { font-size: 11px; line-height: 1.8; margin: 8px 0; }
+
+  button {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 14px 22px;
+    margin: 6px;
+    background: #E52521;
+    color: #fff;
+    border: 4px solid #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 #000;
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  button:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
+  button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+  button.green { background: #00A800; }
+  button.blue { background: #0078F8; }
+  button.yellow { background: #F8B800; color: #000; }
+
+  /* Mario sprite (CSS pixel art) */
+  .mario {
+    width: 64px;
+    height: 64px;
+    margin: 10px auto;
+    image-rendering: pixelated;
+    background-image:
+      radial-gradient(circle at 50% 50%, transparent 0, transparent 100%);
+    position: relative;
+  }
+  .mario::before {
+    content: '🍄';
+    font-size: 48px;
+  }
+
+  .mario-jump {
+    animation: jump 0.6s ease-out;
+  }
+  @keyframes jump {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-50px); }
+    100% { transform: translateY(0); }
+  }
+
+  /* Spelling input */
+  #wordDisplay {
+    font-size: 36px;
+    margin: 16px 0;
+    color: #FFD700;
+    letter-spacing: 6px;
+    min-height: 50px;
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  #spellInput {
+    font-family: inherit;
+    font-size: 22px;
+    padding: 14px 18px;
+    border: 4px solid #fff;
+    border-radius: 6px;
+    text-align: center;
+    background: #fff;
+    color: #000;
+    width: 90%;
+    max-width: 400px;
+    letter-spacing: 4px;
+    text-transform: lowercase;
+    margin: 10px 0;
+    outline: none;
+  }
+  #spellInput:focus { border-color: #FFD700; }
+
+  .feedback {
+    font-size: 18px;
+    margin: 14px 0;
+    min-height: 30px;
+  }
+  .correct { color: #00FF00; animation: pop 0.4s; }
+  .wrong { color: #FF6B6B; animation: shake 0.4s; }
+  @keyframes pop { 0% { transform: scale(0.5); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+
+  .progress-bar {
+    width: 100%;
+    height: 14px;
+    background: rgba(0,0,0,0.5);
+    border: 2px solid #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00A800, #FFD700);
+    transition: width 0.3s;
+  }
+
+  /* Coins shower */
+  .coin-anim {
+    position: fixed;
+    width: 24px;
+    height: 24px;
+    background: #FFD700;
+    border-radius: 50%;
+    border: 2px solid #B8860B;
+    pointer-events: none;
+    z-index: 100;
+    animation: coinFly 1s ease-out forwards;
+  }
+  @keyframes coinFly {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-200px) scale(0.5); opacity: 0; }
+  }
+
+  /* Game-over and win screens */
+  .flagpole {
+    width: 8px;
+    height: 200px;
+    background: #00A800;
+    margin: 20px auto 0;
+    position: relative;
+  }
+  .flag {
+    position: absolute;
+    top: 10px;
+    left: 8px;
+    width: 50px;
+    height: 30px;
+    background: #E52521;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    animation: wave 1s ease-in-out infinite;
+  }
+  @keyframes wave {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(0.7); }
+  }
+
+  /* Mode selector */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  @media (min-width: 600px) {
+    .mode-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* Double or Not buttons */
+  .choice-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+  .choice-row button { min-width: 160px; font-size: 14px; }
+
+  /* Letter slots for fill-the-gap */
+  .letter-slots {
+    font-size: 36px;
+    color: #FFD700;
+    letter-spacing: 8px;
+    margin: 16px 0;
+    text-shadow: 2px 2px 0 #000;
+  }
+  .blank {
+    color: #FF6B6B;
+    background: rgba(255,255,255,0.1);
+    padding: 0 8px;
+    border-radius: 4px;
+  }
+  .letter-options {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+  .letter-options button {
+    width: 60px;
+    height: 60px;
+    font-size: 22px;
+    padding: 0;
+    background: #FFB6C1;
+    color: #000;
+  }
+
+  /* Word list (study mode) */
+  .word-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 16px 0;
+    font-size: 12px;
+    text-align: left;
+  }
+  .word-list .word-card {
+    background: rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .word-list .word-card:hover {
+    border-color: #FFD700;
+    background: rgba(255,215,0,0.2);
+  }
+  .word-list .word-card.double { color: #FFD700; }
+  .word-list .word-card.not { color: #87CEEB; }
+
+  .speak-btn {
+    background: #00A800;
+    border: 3px solid #fff;
+    color: #fff;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 18px;
+    padding: 0;
+    margin: 8px;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #000;
+  }
+
+  .small { font-size: 10px; opacity: 0.8; }
+
+  .star {
+    display: inline-block;
+    color: #FFD700;
+    text-shadow: 0 0 8px #FFD700;
+    animation: starSpin 0.8s linear infinite;
+  }
+  @keyframes starSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="world">
+  <div class="cloud"></div>
+  <div class="cloud"></div>
+  <div class="cloud"></div>
+  <div class="cloud"></div>
+  <div class="hill h1"></div>
+  <div class="hill h2"></div>
+  <div class="bush b1"></div>
+  <div class="bush b2"></div>
+</div>
+<div class="ground-line"></div>
+
+<div id="hud">
+  <div class="hud-item"><span class="coin-icon"></span><span>x<span id="coins">0</span></span></div>
+  <div class="hud-item"><span>WORLD <span id="world-num">1-1</span></span></div>
+  <div class="hud-item"><span>🍄 <span id="lives">3</span></span></div>
+  <div class="hud-item"><span>🔥 <span id="streak">0</span></span></div>
+</div>
+
+<div id="stage">
+
+  <!-- TITLE SCREEN -->
+  <div id="titleScreen" class="panel">
+    <h1>SUPER MARIO<br>SPELLING ADVENTURE</h1>
+    <div class="mario"></div>
+    <p>Help Mario rescue the Princess by spelling the magic words!</p>
+    <p class="small">Today's quest: <b>Double / Not</b> — words that end in -ing.</p>
+    <div class="mode-grid">
+      <button class="green" onclick="startMode('listen')">🔊 Listen & Spell</button>
+      <button class="blue" onclick="startMode('double')">🍄 Double or Not?</button>
+      <button class="yellow" onclick="startMode('gap')">⭐ Fill the Gap</button>
+      <button onclick="startMode('mix')">🏰 Boss Battle (Mix!)</button>
+    </div>
+    <button onclick="showStudy()" style="background:#FFB6C1;color:#000;margin-top:14px;">📖 Study the Words</button>
+  </div>
+
+  <!-- STUDY SCREEN -->
+  <div id="studyScreen" class="panel hidden">
+    <h2>📖 STUDY MODE</h2>
+    <p class="small">Tap any word to hear it. Yellow = doubled letter. Blue = no double.</p>
+    <div class="word-list" id="wordList"></div>
+    <p class="small">Bonus word: <b style="color:#FFD700">Mets</b> ⚾ <button class="speak-btn" onclick="speak('Mets')" style="width:36px;height:36px;font-size:14px;">🔊</button></p>
+    <button onclick="showTitle()">⬅ Back</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="gameScreen" class="panel hidden">
+    <div id="gameInner"></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <p class="small" id="progressText">Question 0 / 0</p>
+    <button onclick="showTitle()" style="background:#666;font-size:10px;padding:8px 14px;margin-top:14px;">⬅ Quit</button>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div id="winScreen" class="panel hidden">
+    <h1>🏰 WORLD CLEAR! 🏰</h1>
+    <p>You rescued the Princess!</p>
+    <div class="flagpole"><div class="flag"></div></div>
+    <p style="margin-top:20px;">Final Score: <span id="finalScore">0</span> coins</p>
+    <p id="winRating" class="small"></p>
+    <button class="green" onclick="showTitle()">▶ Play Again</button>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="overScreen" class="panel hidden">
+    <h1 style="color:#FF6B6B">GAME OVER</h1>
+    <p>Bowser got Mario! 🐢</p>
+    <p style="margin-top:14px;">You earned <span id="overScore">0</span> coins.</p>
+    <p class="small" id="overWords"></p>
+    <button class="green" onclick="showTitle()">↻ Try Again</button>
+  </div>
+
+</div>
+
+<script>
+// ===== Word data =====
+const WORDS = [
+  { word: 'running',  double: true  },
+  { word: 'swimming', double: true  },
+  { word: 'hopping',  double: true  },
+  { word: 'sitting',  double: true  },
+  { word: 'dropping', double: true  },
+  { word: 'sleeping', double: false },
+  { word: 'helping',  double: false },
+  { word: 'looking',  double: false },
+  { word: 'waiting',  double: false },
+  { word: 'coloring', double: false },
+];
+const BONUS = { word: 'Mets', double: false, bonus: true };
+
+// ===== Game State =====
+const state = {
+  coins: 0,
+  lives: 3,
+  streak: 0,
+  bestStreak: 0,
+  world: 1,
+  level: 1,
+  mode: null,
+  queue: [],
+  current: null,
+  qIndex: 0,
+  qTotal: 0,
+  missed: [],
+};
+
+const el = (id) => document.getElementById(id);
+
+function updateHUD() {
+  el('coins').textContent = state.coins;
+  el('lives').textContent = state.lives;
+  el('streak').textContent = state.streak;
+  el('world-num').textContent = `${state.world}-${state.level}`;
+}
+
+// ===== Speech =====
+let voices = [];
+function loadVoices() {
+  voices = window.speechSynthesis.getVoices();
+}
+loadVoices();
+if (typeof speechSynthesis !== 'undefined') {
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function speak(text, rate = 0.85) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = rate;
+  u.pitch = 1.1;
+  // Prefer an English voice
+  const eng = voices.find(v => /en[-_]US/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang));
+  if (eng) u.voice = eng;
+  window.speechSynthesis.speak(u);
+}
+
+// ===== Coin shower =====
+function coinShower(count = 5) {
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const c = document.createElement('div');
+      c.className = 'coin-anim';
+      c.style.left = (Math.random() * window.innerWidth) + 'px';
+      c.style.top = (window.innerHeight * 0.7) + 'px';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 1000);
+    }, i * 80);
+  }
+  // Coin sound (Web Audio)
+  playCoinSound();
+}
+
+// ===== Sounds (synthesized) =====
+let audioCtx;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function tone(freq, dur, type = 'square', vol = 0.15) {
+  try {
+    const ctx = getCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g).connect(ctx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    o.stop(ctx.currentTime + dur);
+  } catch (e) {}
+}
+function playCoinSound() { tone(988, 0.08); setTimeout(() => tone(1319, 0.15), 80); }
+function playWrongSound() { tone(180, 0.2, 'sawtooth', 0.2); }
+function playJumpSound() { tone(523, 0.1); setTimeout(() => tone(784, 0.1), 60); }
+function playWinSound() {
+  const notes = [523, 659, 784, 1047, 1319];
+  notes.forEach((f, i) => setTimeout(() => tone(f, 0.15), i * 120));
+}
+function playGameOverSound() {
+  const notes = [392, 349, 330, 262];
+  notes.forEach((f, i) => setTimeout(() => tone(f, 0.25, 'triangle', 0.2), i * 200));
+}
+function playStarSound() {
+  const notes = [784, 988, 1175, 1568];
+  notes.forEach((f, i) => setTimeout(() => tone(f, 0.08), i * 60));
+}
+
+// ===== Screen helpers =====
+function hideAll() {
+  ['titleScreen','studyScreen','gameScreen','winScreen','overScreen'].forEach(id => el(id).classList.add('hidden'));
+}
+function showTitle() {
+  hideAll();
+  el('titleScreen').classList.remove('hidden');
+  state.coins = 0;
+  state.lives = 3;
+  state.streak = 0;
+  state.world = 1;
+  state.level = 1;
+  state.missed = [];
+  updateHUD();
+}
+function showStudy() {
+  hideAll();
+  el('studyScreen').classList.remove('hidden');
+  const list = el('wordList');
+  list.innerHTML = '';
+  WORDS.forEach(w => {
+    const div = document.createElement('div');
+    div.className = 'word-card ' + (w.double ? 'double' : 'not');
+    div.innerHTML = `${w.word} ${w.double ? '⭐⭐' : '○'}`;
+    div.onclick = () => speak(w.word);
+    list.appendChild(div);
+  });
+}
+
+// ===== Game Setup =====
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startMode(mode) {
+  // Tap to enable audio context (browsers require user gesture)
+  getCtx();
+  state.mode = mode;
+  state.coins = 0;
+  state.lives = 3;
+  state.streak = 0;
+  state.missed = [];
+  state.world = 1;
+  state.level = mode === 'mix' ? 4 : (mode === 'listen' ? 1 : mode === 'double' ? 2 : 3);
+
+  // Build queue
+  let pool = [...WORDS, BONUS];
+  if (mode === 'mix') {
+    // Mix: 12 questions across all sub-modes
+    state.queue = shuffle(pool).slice(0, 10).flatMap(w => {
+      const sub = ['listen','double','gap'][Math.floor(Math.random() * 3)];
+      return [{ ...w, sub }];
+    });
+    // Add 2 bonus listen rounds
+    state.queue.push({ ...BONUS, sub: 'listen' });
+    state.queue = shuffle(state.queue);
+  } else {
+    state.queue = shuffle(pool).map(w => ({ ...w, sub: mode }));
+  }
+
+  state.qIndex = 0;
+  state.qTotal = state.queue.length;
+  updateHUD();
+  hideAll();
+  el('gameScreen').classList.remove('hidden');
+  nextQuestion();
+}
+
+function nextQuestion() {
+  if (state.lives <= 0) {
+    return gameOver();
+  }
+  if (state.qIndex >= state.qTotal) {
+    return gameWin();
+  }
+  state.current = state.queue[state.qIndex];
+  el('progressFill').style.width = ((state.qIndex / state.qTotal) * 100) + '%';
+  el('progressText').textContent = `Question ${state.qIndex + 1} / ${state.qTotal}`;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = state.current;
+  const sub = q.sub;
+  const inner = el('gameInner');
+  inner.innerHTML = '';
+
+  if (sub === 'listen') renderListen(inner, q);
+  else if (sub === 'double') renderDouble(inner, q);
+  else if (sub === 'gap') renderGap(inner, q);
+}
+
+// ===== Mode: Listen & Spell =====
+function renderListen(inner, q) {
+  inner.innerHTML = `
+    <h2>🔊 Listen & Spell</h2>
+    <p class="small">Tap the speaker, then type the word.</p>
+    <button class="speak-btn" id="speakBtn">🔊</button>
+    <div id="wordDisplay">_ _ _ _</div>
+    <input type="text" id="spellInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type here">
+    <div class="feedback" id="feedback"></div>
+    <button class="green" id="submitBtn">CHECK ✓</button>
+    <button class="yellow" id="hintBtn">HINT 💡</button>
+  `;
+  const input = el('spellInput');
+  const fb = el('feedback');
+  let hintsUsed = 0;
+
+  el('speakBtn').onclick = () => speak(q.word);
+  el('hintBtn').onclick = () => {
+    hintsUsed++;
+    const reveal = q.word.slice(0, hintsUsed);
+    const rest = q.word.slice(hintsUsed).replace(/./g, '_');
+    el('wordDisplay').innerHTML = (reveal + rest).split('').join(' ');
+  };
+
+  function submit() {
+    const ans = input.value.trim().toLowerCase();
+    if (!ans) return;
+    if (ans === q.word.toLowerCase()) {
+      fb.innerHTML = '<span class="correct">⭐ MAMMA MIA! Correct! ⭐</span>';
+      el('wordDisplay').innerHTML = q.word.split('').join(' ');
+      const reward = Math.max(1, 10 - hintsUsed * 3);
+      awardCoins(reward);
+      setTimeout(() => advance(true), 1200);
+    } else {
+      fb.innerHTML = `<span class="wrong">❌ Oops! It's: <b>${q.word}</b></span>`;
+      el('wordDisplay').innerHTML = q.word.split('').join(' ');
+      loseLife(q);
+      setTimeout(() => advance(false), 2000);
+    }
+  }
+  el('submitBtn').onclick = submit;
+  input.focus();
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+
+  // Speak the word automatically
+  setTimeout(() => speak(q.word), 300);
+}
+
+// ===== Mode: Double or Not =====
+function renderDouble(inner, q) {
+  inner.innerHTML = `
+    <h2>🍄 Double or Not?</h2>
+    <p class="small">Does this word have a doubled consonant?</p>
+    <button class="speak-btn" onclick="speak('${q.word}')">🔊</button>
+    <div id="wordDisplay">${q.word}</div>
+    <div class="choice-row">
+      <button class="green" id="yesBtn">✅ DOUBLE</button>
+      <button class="blue" id="noBtn">❌ NOT</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  `;
+  const fb = el('feedback');
+
+  function answer(choice) {
+    el('yesBtn').disabled = true;
+    el('noBtn').disabled = true;
+    if (choice === q.double) {
+      fb.innerHTML = '<span class="correct">⭐ Let\'s-a go! Correct! ⭐</span>';
+      // Highlight the doubled letters
+      if (q.double) {
+        const m = q.word.match(/(\w)\1/);
+        if (m) {
+          const idx = q.word.indexOf(m[0]);
+          const before = q.word.slice(0, idx);
+          const dbl = q.word.slice(idx, idx + 2);
+          const after = q.word.slice(idx + 2);
+          el('wordDisplay').innerHTML = `${before}<span style="color:#FF6B6B">${dbl}</span>${after}`;
+        }
+      }
+      awardCoins(8);
+      setTimeout(() => advance(true), 1400);
+    } else {
+      fb.innerHTML = `<span class="wrong">❌ It was ${q.double ? 'DOUBLE' : 'NOT'}.</span>`;
+      loseLife(q);
+      setTimeout(() => advance(false), 1800);
+    }
+  }
+  el('yesBtn').onclick = () => answer(true);
+  el('noBtn').onclick = () => answer(false);
+
+  setTimeout(() => speak(q.word), 200);
+}
+
+// ===== Mode: Fill the Gap =====
+function renderGap(inner, q) {
+  // Pick a random letter index to hide. Prefer the doubled letter when available.
+  let hideIdx;
+  const m = q.word.match(/(\w)\1/);
+  if (q.double && m) {
+    hideIdx = q.word.indexOf(m[0]) + 1; // Hide the second of the doubled pair
+  } else {
+    // Hide a vowel or random middle letter
+    const candidates = [];
+    for (let i = 1; i < q.word.length - 1; i++) candidates.push(i);
+    hideIdx = candidates[Math.floor(Math.random() * candidates.length)];
+  }
+  const correctLetter = q.word[hideIdx].toLowerCase();
+  // Build options: 4 letters including the correct one
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  const options = new Set([correctLetter]);
+  while (options.size < 4) options.add(letters[Math.floor(Math.random() * 26)]);
+  const opts = shuffle([...options]);
+
+  const slots = q.word.split('').map((ch, i) =>
+    i === hideIdx ? `<span class="blank">_</span>` : ch
+  ).join(' ');
+
+  inner.innerHTML = `
+    <h2>⭐ Fill the Gap</h2>
+    <p class="small">Pick the missing letter!</p>
+    <button class="speak-btn" onclick="speak('${q.word}')">🔊</button>
+    <div class="letter-slots">${slots}</div>
+    <div class="letter-options" id="letterOptions"></div>
+    <div class="feedback" id="feedback"></div>
+  `;
+  const lo = el('letterOptions');
+  const fb = el('feedback');
+  opts.forEach(letter => {
+    const b = document.createElement('button');
+    b.textContent = letter;
+    b.onclick = () => {
+      // Disable all
+      [...lo.children].forEach(c => c.disabled = true);
+      if (letter === correctLetter) {
+        fb.innerHTML = '<span class="correct">⭐ It\'s-a me, correct! ⭐</span>';
+        // Reveal the full word
+        const ws = q.word.split('').map((c, i) =>
+          i === hideIdx ? `<span style="color:#00FF00">${c}</span>` : c
+        ).join(' ');
+        document.querySelector('#gameInner .letter-slots').innerHTML = ws;
+        awardCoins(7);
+        setTimeout(() => advance(true), 1400);
+      } else {
+        fb.innerHTML = `<span class="wrong">❌ The missing letter was <b>${correctLetter}</b></span>`;
+        loseLife(q);
+        setTimeout(() => advance(false), 1800);
+      }
+    };
+    lo.appendChild(b);
+  });
+
+  setTimeout(() => speak(q.word), 200);
+}
+
+// ===== Reward / Penalty =====
+function awardCoins(n) {
+  state.streak++;
+  if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+  // Streak bonus
+  let bonus = 0;
+  if (state.streak >= 5) bonus = 5;
+  else if (state.streak >= 3) bonus = 2;
+  state.coins += n + bonus;
+  updateHUD();
+  coinShower(n + bonus);
+  if (state.streak === 5) {
+    playStarSound();
+    showStarPower();
+  }
+}
+
+function loseLife(q) {
+  state.streak = 0;
+  state.lives--;
+  state.missed.push(q.word);
+  updateHUD();
+  playWrongSound();
+}
+
+function showStarPower() {
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;z-index:200;';
+  div.innerHTML = '<span class="star">⭐</span> STAR POWER! <span class="star">⭐</span>';
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 1500);
+}
+
+function advance(correct) {
+  if (correct) playJumpSound();
+  state.qIndex++;
+  nextQuestion();
+}
+
+// ===== End screens =====
+function gameWin() {
+  hideAll();
+  el('winScreen').classList.remove('hidden');
+  el('finalScore').textContent = state.coins;
+  let rating;
+  if (state.lives === 3 && state.missed.length === 0) rating = '🏆 PERFECT! 3-Star Champion!';
+  else if (state.lives >= 2) rating = '⭐⭐ Great job, Plumber!';
+  else rating = '⭐ You did it! Keep practicing!';
+  el('winRating').textContent = rating;
+  playWinSound();
+}
+
+function gameOver() {
+  hideAll();
+  el('overScreen').classList.remove('hidden');
+  el('overScore').textContent = state.coins;
+  if (state.missed.length) {
+    el('overWords').innerHTML = 'Words to practice: <b style="color:#FFD700">' + [...new Set(state.missed)].join(', ') + '</b>';
+  } else {
+    el('overWords').textContent = '';
+  }
+  playGameOverSound();
+}
+
+// ===== Init =====
+showTitle();
+</script>
+
+</body>
+</html>
