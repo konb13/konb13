@@ -123,6 +123,7 @@
     border-radius: 10px;
     cursor: grab;
     user-select: none;
+    touch-action: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -441,18 +442,23 @@ let progress = loadProgress();
 
 /* ---------------- Render ---------------- */
 function measureCell() {
-  // Get computed --cell from CSS so it tracks viewport changes
-  const style = getComputedStyle(document.documentElement);
-  cellSize = parseFloat(style.getPropertyValue('--cell'));
+  // Measure a real cell rather than parsing the CSS var (min() expressions
+  // can't be parsed by parseFloat).
+  const cell = board.querySelector('.cell');
+  if (cell) {
+    cellSize = cell.getBoundingClientRect().width;
+  }
+  if (!cellSize || isNaN(cellSize)) {
+    cellSize = Math.min(window.innerWidth * 0.14, 90);
+  }
   gapSize = 0;
 }
 
 function renderBoard() {
-  measureCell();
   // Clear existing cars (keep exit marker)
   [...board.querySelectorAll('.car, .cell')].forEach(el => el.remove());
 
-  // Build cells (visual grid only)
+  // Build cells (visual grid only) — must exist before measuring
   for (let r = 0; r < 6; r++) {
     for (let c = 0; c < 6; c++) {
       const cell = document.createElement('div');
@@ -462,6 +468,8 @@ function renderBoard() {
       board.appendChild(cell);
     }
   }
+
+  measureCell();
 
   // Build cars
   cars.forEach(car => {
