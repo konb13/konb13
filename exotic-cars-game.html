@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Exotic Rush Hour</title>
+<style>
+  :root {
+    --cell: min(14vw, 90px);
+    --gap: 4px;
+    --board-bg: #2b2f38;
+    --road: #4a5061;
+    --line: #f5d54a;
+    --grass: #6cbf6b;
+    --exit: #f5d54a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(180deg, #87ceeb 0%, #b8e0ec 40%, #6cbf6b 70%, #4a9c4b 100%);
+    overflow-x: hidden;
+    color: #222;
+    touch-action: manipulation;
+  }
+  header {
+    text-align: center;
+    padding: 16px 12px 8px;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(22px, 5vw, 36px);
+    color: #c0392b;
+    text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,0.15);
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    font-size: clamp(12px, 2.5vw, 16px);
+    color: #2c3e50;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+  }
+  .hud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255,255,255,0.85);
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: 2px solid #2c3e50;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .hud .level-badge {
+    background: #c0392b; color: #fff;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .hud .moves-badge {
+    background: #2c3e50; color: #fff;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .board-wrap {
+    position: relative;
+    padding: 16px;
+    background: linear-gradient(135deg, #1f232b 0%, #2b2f38 100%);
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.08);
+    border: 3px solid #0e1014;
+  }
+  .board {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(6, var(--cell));
+    grid-template-rows: repeat(6, var(--cell));
+    gap: 0;
+    background: var(--road);
+    border-radius: 8px;
+    overflow: visible;
+  }
+  .cell {
+    border: 1px dashed rgba(255,255,255,0.15);
+    background:
+      linear-gradient(0deg, rgba(0,0,0,0.05), rgba(0,0,0,0.05));
+  }
+  .exit-marker {
+    position: absolute;
+    right: calc(-1 * var(--cell));
+    top: calc(2 * var(--cell));
+    width: var(--cell);
+    height: var(--cell);
+    background: repeating-linear-gradient(
+      45deg,
+      #f5d54a, #f5d54a 10px,
+      #222 10px, #222 20px
+    );
+    border-radius: 0 8px 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
+    border: 2px solid #0e1014;
+    border-left: none;
+  }
+  .exit-marker::after {
+    content: "EXIT →";
+  }
+  .car {
+    position: absolute;
+    border-radius: 10px;
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    box-shadow:
+      0 4px 0 rgba(0,0,0,0.25),
+      inset 0 -6px 0 rgba(0,0,0,0.18),
+      inset 0 4px 0 rgba(255,255,255,0.22);
+    transition: transform 120ms ease-out, box-shadow 120ms;
+    overflow: hidden;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  .car:active { cursor: grabbing; transform: scale(0.97); }
+  .car.dragging { z-index: 50; box-shadow: 0 12px 28px rgba(0,0,0,0.5); transition: none; }
+  .car .label {
+    z-index: 2;
+    padding: 0 4px;
+    white-space: nowrap;
+    text-align: center;
+  }
+  /* Decorative car details */
+  .car .windows {
+    position: absolute;
+    background: rgba(180, 220, 255, 0.55);
+    border: 1px solid rgba(0,0,0,0.3);
+    border-radius: 4px;
+  }
+  .car.h .windows {
+    top: 18%; bottom: 18%;
+    left: 22%; right: 22%;
+  }
+  .car.v .windows {
+    left: 18%; right: 18%;
+    top: 22%; bottom: 22%;
+  }
+  .car .wheel {
+    position: absolute;
+    background: #111;
+    border: 2px solid #333;
+    border-radius: 50%;
+    width: 14%; height: 14%;
+  }
+  .car.h .wheel.w1 { left: 8%; bottom: -4%; }
+  .car.h .wheel.w2 { right: 8%; bottom: -4%; }
+  .car.h .wheel.w3, .car.h .wheel.w4 { display: none; }
+  .car.h.len3 .wheel.w3 { display: block; left: 38%; bottom: -4%; }
+  .car.v .wheel.w1 { top: 8%; right: -4%; }
+  .car.v .wheel.w2 { bottom: 8%; right: -4%; }
+  .car.v .wheel.w3, .car.v .wheel.w4 { display: none; }
+  .car.v.len3 .wheel.w3 { display: block; top: 38%; right: -4%; }
+
+  /* Per-car styling */
+  .car.ferrari { background: linear-gradient(180deg, #ff2a2a 0%, #c0140a 100%); }
+  .car.lambo { background: linear-gradient(180deg, #ffd000 0%, #d49a00 100%); color: #1a1a1a; text-shadow: 1px 1px 0 #fff; }
+  .car.bugatti { background: linear-gradient(180deg, #2a6cff 0%, #133a99 100%); }
+  .car.cybertruck { background: linear-gradient(180deg, #c8ccd2 0%, #7d838d 100%); color: #111; text-shadow: 1px 1px 0 #fff; }
+  .car.cybertruck .windows { background: rgba(20,20,20,0.85); border-color: #000; }
+  .car.limo { background: linear-gradient(180deg, #1a1a1a 0%, #000 100%); }
+  .car.limo .windows { background: rgba(40,40,40,0.85); }
+  .car.firetruck { background: linear-gradient(180deg, #e23a2a 0%, #8a1a0c 100%); }
+  .car.firetruck::after {
+    content: "🚒";
+    position: absolute;
+    right: 6px;
+    font-size: 18px;
+    z-index: 3;
+  }
+  .car.schoolbus { background: linear-gradient(180deg, #ffd84a 0%, #e0a800 100%); color: #1a1a1a; text-shadow: 1px 1px 0 #fff; }
+  .car.schoolbus::before {
+    content: "";
+    position: absolute;
+    inset: 30% 4% 30% 4%;
+    background: repeating-linear-gradient(90deg, transparent 0, transparent 14%, rgba(0,0,0,0.25) 14%, rgba(0,0,0,0.25) 15%);
+    pointer-events: none;
+  }
+  .car.target { box-shadow: 0 4px 0 rgba(0,0,0,0.25), inset 0 -6px 0 rgba(0,0,0,0.18), inset 0 4px 0 rgba(255,255,255,0.22), 0 0 0 3px #fff, 0 0 0 6px #f5d54a; }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  button {
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 2px solid #0e1014;
+    background: #fff;
+    color: #222;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #0e1014;
+    transition: transform 80ms;
+  }
+  button:hover { background: #f4f4f4; }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #0e1014; }
+  button.primary { background: #c0392b; color: #fff; }
+  button.primary:hover { background: #a83224; }
+  button.success { background: #27ae60; color: #fff; }
+
+  .win-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .win-overlay.show { display: flex; }
+  .win-card {
+    background: #fff;
+    padding: 28px 24px;
+    border-radius: 18px;
+    text-align: center;
+    max-width: 360px;
+    border: 4px solid #f5d54a;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  }
+  .win-card h2 {
+    margin: 0 0 8px;
+    color: #c0392b;
+    font-size: 28px;
+  }
+  .win-card .stats {
+    font-size: 14px;
+    color: #2c3e50;
+    margin: 8px 0 18px;
+  }
+  .win-card .buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .level-picker {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+    max-width: 540px;
+  }
+  .level-picker button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .level-picker button.current {
+    background: #f5d54a;
+  }
+  .level-picker button.solved::after {
+    content: " ★";
+    color: #c0392b;
+  }
+  footer {
+    text-align: center;
+    padding: 10px;
+    font-size: 12px;
+    color: #2c3e50;
+    opacity: 0.85;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>EXOTIC RUSH HOUR</h1>
+  <div class="subtitle">Clear the way — get the Ferrari out!</div>
+</header>
+
+<div class="stage">
+  <div class="hud">
+    <span class="level-badge" id="levelBadge">Level 1</span>
+    <span class="moves-badge">Moves: <span id="moves">0</span></span>
+    <span>Best: <span id="best">—</span></span>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <div class="exit-marker"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="resetBtn">↺ Reset</button>
+    <button id="prevBtn">◀ Prev</button>
+    <button id="nextBtn" class="primary">Next ▶</button>
+  </div>
+
+  <div class="level-picker" id="levelPicker"></div>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-card">
+    <h2>🏁 You did it!</h2>
+    <div class="stats" id="winStats"></div>
+    <div class="buttons">
+      <button id="winRetry">↺ Retry</button>
+      <button id="winNext" class="primary">Next Level ▶</button>
+    </div>
+  </div>
+</div>
+
+<footer>Drag a car along its lane. The Ferrari has to exit on the right.</footer>
+
+<script>
+/* ---------------- Level data ----------------
+   Each car: { id, type, row, col, len, dir: 'h'|'v', target?: true }
+   Grid is 6x6 (rows 0-5, cols 0-5). Exit is on row 2 (third row), right side.
+   Target Ferrari must be horizontal and end with its right edge past col 5.
+*/
+const LEVELS = [
+  // Level 1 — gentle intro
+  {
+    name: "Warm-up",
+    cars: [
+      { id: 'ferrari', type: 'ferrari', row: 2, col: 1, len: 2, dir: 'h', target: true, label: 'Ferrari' },
+      { id: 'lambo',   type: 'lambo',   row: 0, col: 3, len: 2, dir: 'h', label: 'Lambo' },
+      { id: 'bus',     type: 'schoolbus', row: 2, col: 4, len: 2, dir: 'v', label: 'Bus' },
+    ]
+  },
+  // Level 2
+  {
+    name: "Two Trucks",
+    cars: [
+      { id: 'ferrari',  type: 'ferrari', row: 2, col: 0, len: 2, dir: 'h', target: true, label: 'Ferrari' },
+      { id: 'cyber',    type: 'cybertruck', row: 0, col: 0, len: 2, dir: 'v', label: 'Cyber' },
+      { id: 'bugatti',  type: 'bugatti', row: 0, col: 2, len: 3, dir: 'h', label: 'Bugatti' },
+      { id: 'firetruck', type: 'firetruck', row: 2, col: 5, len: 3, dir: 'v', label: 'Fire' },
+    ]
+  },
+  // Level 3
+  {
+    name: "Roadblock",
+    cars: [
+      { id: 'ferrari',  type: 'ferrari', row: 2, col: 1, len: 2, dir: 'h', target: true, label: 'Ferrari' },
+      { id: 'lambo',    type: 'lambo', row: 0, col: 0, len: 2, dir: 'v', label: 'Lambo' },
+      { id: 'bugatti',  type: 'bugatti', row: 0, col: 3, len: 2, dir: 'h', label: 'Bugatti' },
+      { id: 'bus',      type: 'schoolbus', row: 0, col: 5, len: 3, dir: 'v', label: 'Bus' },
+      { id: 'limo',     type: 'limo', row: 3, col: 0, len: 3, dir: 'h', label: 'Limo' },
+      { id: 'cyber',    type: 'cybertruck', row: 4, col: 3, len: 2, dir: 'h', label: 'Cyber' },
+    ]
+  },
+  // Level 4
+  {
+    name: "Traffic Jam",
+    cars: [
+      { id: 'ferrari',  type: 'ferrari', row: 2, col: 0, len: 2, dir: 'h', target: true, label: 'Ferrari' },
+      { id: 'cyber',    type: 'cybertruck', row: 0, col: 0, len: 3, dir: 'h', label: 'Cyber' },
+      { id: 'lambo',    type: 'lambo', row: 0, col: 4, len: 2, dir: 'v', label: 'Lambo' },
+      { id: 'bugatti',  type: 'bugatti', row: 1, col: 3, len: 2, dir: 'v', label: 'Bugatti' },
+      { id: 'bus',      type: 'schoolbus', row: 3, col: 3, len: 3, dir: 'h', label: 'Bus' },
+      { id: 'limo',     type: 'limo', row: 2, col: 5, len: 3, dir: 'v', label: 'Limo' },
+      { id: 'firetruck', type: 'firetruck', row: 4, col: 0, len: 3, dir: 'h', label: 'Fire' },
+    ]
+  },
+  // Level 5
+  {
+    name: "Big Rigs",
+    cars: [
+      { id: 'ferrari',  type: 'ferrari', row: 2, col: 1, len: 2, dir: 'h', target: true, label: 'Ferrari' },
+      { id: 'bus',      type: 'schoolbus', row: 0, col: 0, len: 3, dir: 'v', label: 'Bus' },
+      { id: 'limo',     type: 'limo', row: 0, col: 1, len: 3, dir: 'h', label: 'Limo' },
+      { id: 'cyber',    type: 'cybertruck', row: 1, col: 4, len: 2, dir: 'v', label: 'Cyber' },
+      { id: 'bugatti',  type: 'bugatti', row: 3, col: 0, len: 2, dir: 'h', label: 'Bugatti' },
+      { id: 'lambo',    type: 'lambo', row: 3, col: 5, len: 3, dir: 'v', label: 'Lambo' },
+      { id: 'firetruck', type: 'firetruck', row: 5, col: 1, len: 3, dir: 'h', label: 'Fire' },
+    ]
+  },
+  // Level 6 — trickier
+  {
+    name: "Gridlock",
+    cars: [
+      { id: 'ferrari',  type: 'ferrari', row: 2, col: 0, len: 2, dir: 'h', target: true, label: 'Ferrari' },
+      { id: 'cyber',    type: 'cybertruck', row: 0, col: 0, len: 2, dir: 'h', label: 'Cyber' },
+      { id: 'lambo',    type: 'lambo', row: 0, col: 2, len: 2, dir: 'v', label: 'Lambo' },
+      { id: 'bus',      type: 'schoolbus', row: 0, col: 5, len: 3, dir: 'v', label: 'Bus' },
+      { id: 'bugatti',  type: 'bugatti', row: 2, col: 3, len: 2, dir: 'v', label: 'Bugatti' },
+      { id: 'limo',     type: 'limo', row: 3, col: 0, len: 3, dir: 'h', label: 'Limo' },
+      { id: 'firetruck', type: 'firetruck', row: 4, col: 3, len: 3, dir: 'h', label: 'Fire' },
+      { id: 'cyber2',   type: 'cybertruck', row: 5, col: 0, len: 2, dir: 'h', label: 'Cyber' },
+    ]
+  },
+];
+
+/* ---------------- Game state ---------------- */
+const board = document.getElementById('board');
+const movesEl = document.getElementById('moves');
+const bestEl = document.getElementById('best');
+const levelBadge = document.getElementById('levelBadge');
+const levelPicker = document.getElementById('levelPicker');
+const winOverlay = document.getElementById('winOverlay');
+const winStats = document.getElementById('winStats');
+
+let currentLevel = 0;
+let cars = []; // working copy
+let moves = 0;
+let cellSize = 0;
+let gapSize = 0;
+
+const STORAGE_KEY = 'exotic-rush-hour-v1';
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveProgress(p) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch (e) {}
+}
+let progress = loadProgress();
+
+/* ---------------- Render ---------------- */
+function measureCell() {
+  // Get computed --cell from CSS so it tracks viewport changes
+  const style = getComputedStyle(document.documentElement);
+  cellSize = parseFloat(style.getPropertyValue('--cell'));
+  gapSize = 0;
+}
+
+function renderBoard() {
+  measureCell();
+  // Clear existing cars (keep exit marker)
+  [...board.querySelectorAll('.car, .cell')].forEach(el => el.remove());
+
+  // Build cells (visual grid only)
+  for (let r = 0; r < 6; r++) {
+    for (let c = 0; c < 6; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.gridColumn = (c + 1);
+      cell.style.gridRow = (r + 1);
+      board.appendChild(cell);
+    }
+  }
+
+  // Build cars
+  cars.forEach(car => {
+    const el = document.createElement('div');
+    el.className = 'car ' + car.type + ' ' + car.dir + (car.len === 3 ? ' len3' : '');
+    if (car.target) el.classList.add('target');
+    el.dataset.id = car.id;
+
+    el.innerHTML = `
+      <div class="windows"></div>
+      <div class="wheel w1"></div>
+      <div class="wheel w2"></div>
+      <div class="wheel w3"></div>
+      <div class="label">${car.label || car.type}</div>
+    `;
+    positionCar(el, car);
+    attachDrag(el, car);
+    board.appendChild(el);
+  });
+
+  movesEl.textContent = moves;
+  const best = progress['l' + currentLevel];
+  bestEl.textContent = best ? best : '—';
+  levelBadge.textContent = `Level ${currentLevel + 1}: ${LEVELS[currentLevel].name}`;
+  renderLevelPicker();
+}
+
+function positionCar(el, car) {
+  const w = car.dir === 'h' ? car.len * cellSize : cellSize;
+  const h = car.dir === 'v' ? car.len * cellSize : cellSize;
+  const x = car.col * cellSize;
+  const y = car.row * cellSize;
+  el.style.width = (w - 6) + 'px';
+  el.style.height = (h - 6) + 'px';
+  el.style.left = (x + 3) + 'px';
+  el.style.top = (y + 3) + 'px';
+}
+
+function renderLevelPicker() {
+  levelPicker.innerHTML = '';
+  LEVELS.forEach((lvl, i) => {
+    const b = document.createElement('button');
+    b.textContent = (i + 1);
+    if (i === currentLevel) b.classList.add('current');
+    if (progress['l' + i]) b.classList.add('solved');
+    b.onclick = () => loadLevel(i);
+    levelPicker.appendChild(b);
+  });
+}
+
+/* ---------------- Occupancy / move logic ---------------- */
+function buildGrid(excludeId) {
+  const g = Array.from({ length: 6 }, () => Array(6).fill(null));
+  for (const car of cars) {
+    if (car.id === excludeId) continue;
+    for (let i = 0; i < car.len; i++) {
+      const r = car.row + (car.dir === 'v' ? i : 0);
+      const c = car.col + (car.dir === 'h' ? i : 0);
+      if (r >= 0 && r < 6 && c >= 0 && c < 6) g[r][c] = car.id;
+    }
+  }
+  return g;
+}
+
+function maxMove(car) {
+  // Returns { min, max } offsets along the car's axis it can travel.
+  const grid = buildGrid(car.id);
+  let neg = 0, pos = 0;
+  if (car.dir === 'h') {
+    // Try moving left
+    let c = car.col - 1;
+    while (c >= 0 && grid[car.row][c] === null) { neg--; c--; }
+    // Try moving right
+    let endC = car.col + car.len;
+    while (endC <= 5 && grid[car.row][endC] === null) { pos++; endC++; }
+  } else {
+    let r = car.row - 1;
+    while (r >= 0 && grid[r][car.col] === null) { neg--; r--; }
+    let endR = car.row + car.len;
+    while (endR <= 5 && grid[endR][car.col] === null) { pos++; endR++; }
+  }
+  return { neg, pos };
+}
+
+function checkWin() {
+  const ferrari = cars.find(c => c.target);
+  if (!ferrari) return false;
+  // Win when right edge crosses column 5 (i.e., can exit on row 2)
+  if (ferrari.row !== 2) return false;
+  // Win when ferrari is pushed all the way right and beyond — we'll declare
+  // win when no obstacle blocks its path off the board.
+  const grid = buildGrid(ferrari.id);
+  for (let c = ferrari.col + ferrari.len; c <= 5; c++) {
+    if (grid[ferrari.row][c] !== null) return false;
+  }
+  return ferrari.row === 2;
+}
+
+/* ---------------- Drag handling ---------------- */
+function attachDrag(el, car) {
+  let dragging = false;
+  let startX = 0, startY = 0;
+  let startCol = 0, startRow = 0;
+  let limits = { neg: 0, pos: 0 };
+  let pointerId = null;
+
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    dragging = true;
+    pointerId = e.pointerId;
+    el.setPointerCapture(pointerId);
+    el.classList.add('dragging');
+    startX = e.clientX;
+    startY = e.clientY;
+    startCol = car.col;
+    startRow = car.row;
+    limits = maxMove(car);
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (car.dir === 'h') {
+      let offset = Math.round(dx / cellSize);
+      offset = Math.max(limits.neg, Math.min(limits.pos, offset));
+      // Visual smooth drag (continuous), clamped:
+      let pxOffset = Math.max(limits.neg * cellSize, Math.min(limits.pos * cellSize, dx));
+      el.style.left = (startCol * cellSize + 3 + pxOffset) + 'px';
+    } else {
+      let offset = Math.round(dy / cellSize);
+      offset = Math.max(limits.neg, Math.min(limits.pos, offset));
+      let pxOffset = Math.max(limits.neg * cellSize, Math.min(limits.pos * cellSize, dy));
+      el.style.top = (startRow * cellSize + 3 + pxOffset) + 'px';
+    }
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('dragging');
+    try { el.releasePointerCapture(pointerId); } catch (_) {}
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    let offset = 0;
+    if (car.dir === 'h') offset = Math.round(dx / cellSize);
+    else offset = Math.round(dy / cellSize);
+    offset = Math.max(limits.neg, Math.min(limits.pos, offset));
+
+    if (offset !== 0) {
+      if (car.dir === 'h') car.col = startCol + offset;
+      else car.row = startRow + offset;
+      moves++;
+      movesEl.textContent = moves;
+    }
+    positionCar(el, car);
+
+    if (checkWin()) {
+      setTimeout(() => onWin(), 250);
+    }
+  }
+  el.addEventListener('pointerup', endDrag);
+  el.addEventListener('pointercancel', endDrag);
+}
+
+/* ---------------- Win flow ---------------- */
+function onWin() {
+  const best = progress['l' + currentLevel];
+  if (!best || moves < best) {
+    progress['l' + currentLevel] = moves;
+    saveProgress(progress);
+  }
+  winStats.textContent = `Level ${currentLevel + 1} cleared in ${moves} moves` +
+    (best && moves < best ? ` — new best!` :
+     best ? ` (best: ${progress['l' + currentLevel]})` : '');
+  winOverlay.classList.add('show');
+  renderLevelPicker();
+}
+
+/* ---------------- Level loading ---------------- */
+function loadLevel(idx) {
+  currentLevel = Math.max(0, Math.min(LEVELS.length - 1, idx));
+  cars = LEVELS[currentLevel].cars.map(c => ({ ...c }));
+  moves = 0;
+  winOverlay.classList.remove('show');
+  renderBoard();
+}
+
+/* ---------------- Controls ---------------- */
+document.getElementById('resetBtn').onclick = () => loadLevel(currentLevel);
+document.getElementById('prevBtn').onclick = () => loadLevel(currentLevel - 1);
+document.getElementById('nextBtn').onclick = () => loadLevel(currentLevel + 1);
+document.getElementById('winRetry').onclick = () => loadLevel(currentLevel);
+document.getElementById('winNext').onclick = () => {
+  if (currentLevel < LEVELS.length - 1) loadLevel(currentLevel + 1);
+  else winOverlay.classList.remove('show');
+};
+
+window.addEventListener('resize', () => {
+  // Re-position cars when cell size changes
+  measureCell();
+  cars.forEach(car => {
+    const el = board.querySelector(`.car[data-id="${car.id}"]`);
+    if (el) positionCar(el, car);
+  });
+});
+
+/* ---------------- Boot ---------------- */
+loadLevel(0);
+</script>
+</body>
+</html>
