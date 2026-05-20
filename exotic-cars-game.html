@@ -441,24 +441,24 @@ function saveProgress(p) {
 let progress = loadProgress();
 
 /* ---------------- Render ---------------- */
-function measureCell() {
-  // Measure a real cell rather than parsing the CSS var (min() expressions
-  // can't be parsed by parseFloat).
-  const cell = board.querySelector('.cell');
-  if (cell) {
-    cellSize = cell.getBoundingClientRect().width;
-  }
-  if (!cellSize || isNaN(cellSize)) {
-    cellSize = Math.min(window.innerWidth * 0.14, 90);
-  }
-  gapSize = 0;
+function applyCellSize() {
+  // Compute cell size in JS so we never depend on parsing CSS min()/clamp().
+  // Leave room for: board-wrap padding/border, the EXIT marker that overhangs
+  // 1 cell to the right of the board, and viewport safety margin.
+  const padding = 60;
+  const totalCellsWide = 7; // 6 board + 1 exit-marker overhang
+  const available = Math.max(280, window.innerWidth - padding);
+  cellSize = Math.max(36, Math.min(80, Math.floor(available / totalCellsWide)));
+  document.documentElement.style.setProperty('--cell', cellSize + 'px');
 }
 
 function renderBoard() {
+  applyCellSize();
+
   // Clear existing cars (keep exit marker)
   [...board.querySelectorAll('.car, .cell')].forEach(el => el.remove());
 
-  // Build cells (visual grid only) — must exist before measuring
+  // Build cells (visual grid only)
   for (let r = 0; r < 6; r++) {
     for (let c = 0; c < 6; c++) {
       const cell = document.createElement('div');
@@ -468,8 +468,6 @@ function renderBoard() {
       board.appendChild(cell);
     }
   }
-
-  measureCell();
 
   // Build cars
   cars.forEach(car => {
@@ -671,8 +669,7 @@ document.getElementById('winNext').onclick = () => {
 };
 
 window.addEventListener('resize', () => {
-  // Re-position cars when cell size changes
-  measureCell();
+  applyCellSize();
   cars.forEach(car => {
     const el = board.querySelector(`.car[data-id="${car.id}"]`);
     if (el) positionCar(el, car);
