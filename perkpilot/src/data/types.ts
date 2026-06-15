@@ -61,9 +61,22 @@ export interface CardCatalogEntry {
   /** category -> multiplier, e.g. { dining: 4, travel: 3, other: 1 } */
   earn_rates: Record<string, number>;
   benefits_template: BenefitTemplate[];
+  /** Welcome offer, if the card is currently worth chasing. Drives the planner. */
+  signup_bonus?: SignupBonus;
   /** Critical: benefits change constantly. Surfaced in UI as a trust signal. */
   last_verified_at: string;
   status: CatalogStatus;
+}
+
+/** A card's current welcome offer, in the shape the two-player planner needs. */
+export interface SignupBonus {
+  bonus_points: number;
+  /** Cash value of the bonus at the program's mid cpp. */
+  bonus_value_usd: number;
+  min_spend_usd: number;
+  min_spend_months: number;
+  /** Points the *referrer* earns when a household member is referred (P2P). */
+  referral_bonus_usd?: number;
 }
 
 // ---------------------------------------------------------------------------

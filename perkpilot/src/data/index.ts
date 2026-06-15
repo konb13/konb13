@@ -20,4 +20,6 @@ export function getClient(): DataClient {
 export * from './types';
 export * from './client';
 export * from './feeAnalysis';
+export * from './twoPlayerPlanner';
+export { SIGNUP_BONUSES, getSignupBonus } from './signupBonuses';
 export { USE_MOCK_DATA } from './config';

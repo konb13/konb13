@@ -27,6 +27,7 @@ export default function RootLayout() {
         <Stack.Screen name="add-card" options={{ presentation: 'modal', title: 'Add a card' }} />
         <Stack.Screen name="card/[id]" options={{ title: 'Card' }} />
         <Stack.Screen name="fee-analysis" options={{ title: 'Annual fee decisions' }} />
+        <Stack.Screen name="two-player" options={{ title: 'Two-player bonus plan' }} />
       </Stack>
     </SafeAreaProvider>
   );

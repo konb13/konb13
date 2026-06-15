@@ -8,6 +8,7 @@ import type {
   ValueAtRiskSummary,
 } from './types';
 import type { FeeAnalysis } from './feeAnalysis';
+import type { PlanRequestTarget, PlannerOptions, TwoPlayerPlan } from './twoPlayerPlanner';
 import { CARD_CATALOG } from './catalog';
 import { computeValueAtRisk } from './valueAtRisk';
 
@@ -48,6 +49,8 @@ export interface DataClient {
   getValueAtRisk(): Promise<ValueAtRiskSummary>;
   /** Keep/downgrade/cancel analysis for cards with a fee due within `withinDays`. */
   getFeeDecisions(withinDays?: number): Promise<FeeAnalysis[]>;
+  /** Sequenced two-player signup-bonus application plan for the household. */
+  getTwoPlayerPlan(targets: PlanRequestTarget[], options?: PlannerOptions): Promise<TwoPlayerPlan>;
 }
 
 export interface AddUserCardInput {

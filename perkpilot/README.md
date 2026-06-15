@@ -26,6 +26,7 @@ a real Supabase project with one environment variable.
 | Points accounts | ✅ `app/(tabs)/points.tsx` |
 | Cash → points estimator (§6 spec) | ✅ `src/data/estimator.ts` (+ unit tests) |
 | Annual-fee keep/downgrade/cancel engine (§10 idea #1) | ✅ `src/data/feeAnalysis.ts` + `app/fee-analysis.tsx` (+ unit tests) |
+| Two-player signup-bonus planner — 5/24 + referral routing (§10 idea #3) | ✅ `src/data/twoPlayerPlanner.ts`, `issuerRules.ts` + `app/two-player.tsx` (+ unit tests) |
 | Local expiration reminders (30/7/1 day) | ✅ `src/notifications.ts` |
 | Auth (email magic-link in live mode) | ✅ `app/sign-in.tsx` + Supabase OTP |
 
@@ -124,3 +125,11 @@ policies in `0002_rls.sql` — no per-query filtering in the app.
   confidence badge, per §6 — never a single authoritative number.
 - **No credential storage.** Manual entry only; sidesteps the GLBA-adjacent and
   security risk the plan calls out as a v1 non-goal.
+- **The two-player planner is a pure rules engine.** It reads each spouse's
+  existing cards to compute Chase 5/24, sequences Chase applications before the
+  gate fills, enforces per-issuer application velocity, never re-recommends a
+  held card (welcome bonuses are once-per-lifetime), and routes shared cards so
+  one spouse refers the other for the referral bonus. No external data, fully
+  deterministic, covered by unit tests. Welcome-offer figures live in
+  `src/data/signupBonuses.ts` and are re-verified on their own cadence (offers
+  churn faster than benefits).

@@ -11,6 +11,8 @@ import type {
 import { CARD_CATALOG, catalogById } from './catalog';
 import { computeValueAtRisk } from './valueAtRisk';
 import { computeFeeDecisions, type FeeAnalysis } from './feeAnalysis';
+import { buildPlanFromData, type PlanRequestTarget, type PlannerOptions, type TwoPlayerPlan } from './twoPlayerPlanner';
+import { getSignupBonus } from './signupBonuses';
 import {
   MOCK_BENEFITS,
   MOCK_HOUSEHOLD,
@@ -127,6 +129,19 @@ export class MockClient implements DataClient {
   getFeeDecisions(withinDays = 90): Promise<FeeAnalysis[]> {
     return delay(
       computeFeeDecisions({ userCards, benefits, catalog: CARD_CATALOG, withinDays }),
+    );
+  }
+
+  getTwoPlayerPlan(targets: PlanRequestTarget[], options?: PlannerOptions): Promise<TwoPlayerPlan> {
+    return delay(
+      buildPlanFromData({
+        members: MOCK_USERS,
+        userCards,
+        catalog: CARD_CATALOG,
+        requests: targets,
+        getSignupBonus,
+        options,
+      }),
     );
   }
 }

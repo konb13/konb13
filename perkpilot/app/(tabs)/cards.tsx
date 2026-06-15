@@ -49,6 +49,9 @@ export default function Cards() {
             <Link href="/fee-analysis" asChild>
               <Button label="Annual fee decisions" variant="ghost" onPress={() => {}} />
             </Link>
+            <Link href="/two-player" asChild>
+              <Button label="Two-player bonus plan" variant="ghost" onPress={() => {}} />
+            </Link>
           </View>
         }
         renderItem={({ item }) => {

@@ -13,6 +13,8 @@ import type {
 } from './types';
 import { computeValueAtRisk } from './valueAtRisk';
 import { computeFeeDecisions, type FeeAnalysis } from './feeAnalysis';
+import { buildPlanFromData, type PlanRequestTarget, type PlannerOptions, type TwoPlayerPlan } from './twoPlayerPlanner';
+import { getSignupBonus } from './signupBonuses';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
 
 // Live implementation. RLS scopes every read/write to the caller's household,
@@ -128,5 +130,14 @@ export class SupabaseDataClient implements DataClient {
       this.getCatalog(),
     ]);
     return computeFeeDecisions({ userCards, benefits, catalog, withinDays });
+  }
+
+  async getTwoPlayerPlan(targets: PlanRequestTarget[], options?: PlannerOptions): Promise<TwoPlayerPlan> {
+    const [members, userCards, catalog] = await Promise.all([
+      this.getMembers(),
+      this.listUserCards(),
+      this.getCatalog(),
+    ]);
+    return buildPlanFromData({ members, userCards, catalog, requests: targets, getSignupBonus, options });
   }
 }
