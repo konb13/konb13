@@ -26,6 +26,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="add-card" options={{ presentation: 'modal', title: 'Add a card' }} />
         <Stack.Screen name="card/[id]" options={{ title: 'Card' }} />
+        <Stack.Screen name="fee-analysis" options={{ title: 'Annual fee decisions' }} />
       </Stack>
     </SafeAreaProvider>
   );

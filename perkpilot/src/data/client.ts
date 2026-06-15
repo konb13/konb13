@@ -7,6 +7,7 @@ import type {
   UserCard,
   ValueAtRiskSummary,
 } from './types';
+import type { FeeAnalysis } from './feeAnalysis';
 import { CARD_CATALOG } from './catalog';
 import { computeValueAtRisk } from './valueAtRisk';
 
@@ -45,6 +46,8 @@ export interface DataClient {
 
   // derived
   getValueAtRisk(): Promise<ValueAtRiskSummary>;
+  /** Keep/downgrade/cancel analysis for cards with a fee due within `withinDays`. */
+  getFeeDecisions(withinDays?: number): Promise<FeeAnalysis[]>;
 }
 
 export interface AddUserCardInput {

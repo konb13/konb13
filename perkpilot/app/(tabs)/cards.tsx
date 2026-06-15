@@ -42,9 +42,12 @@ export default function Cards() {
         keyExtractor={(c) => c.id}
         contentContainerStyle={{ padding: space(4) }}
         ListHeaderComponent={
-          <View style={{ marginBottom: space(2) }}>
+          <View style={{ marginBottom: space(2), gap: space(2) }}>
             <Link href="/add-card" asChild>
               <Button label="+ Add a card" onPress={() => {}} />
+            </Link>
+            <Link href="/fee-analysis" asChild>
+              <Button label="Annual fee decisions" variant="ghost" onPress={() => {}} />
             </Link>
           </View>
         }

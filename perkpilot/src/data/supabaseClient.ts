@@ -12,6 +12,7 @@ import type {
   ValueAtRiskSummary,
 } from './types';
 import { computeValueAtRisk } from './valueAtRisk';
+import { computeFeeDecisions, type FeeAnalysis } from './feeAnalysis';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
 
 // Live implementation. RLS scopes every read/write to the caller's household,
@@ -118,5 +119,14 @@ export class SupabaseDataClient implements DataClient {
     }
     const items = data as ValueAtRiskSummary['items'];
     return { items, total_at_risk_usd: items.reduce((s, i) => s + i.est_value_usd, 0) };
+  }
+
+  async getFeeDecisions(withinDays = 90): Promise<FeeAnalysis[]> {
+    const [userCards, benefits, catalog] = await Promise.all([
+      this.listUserCards(),
+      this.listBenefits(),
+      this.getCatalog(),
+    ]);
+    return computeFeeDecisions({ userCards, benefits, catalog, withinDays });
   }
 }

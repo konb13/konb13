@@ -19,4 +19,5 @@ export function getClient(): DataClient {
 
 export * from './types';
 export * from './client';
+export * from './feeAnalysis';
 export { USE_MOCK_DATA } from './config';

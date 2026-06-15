@@ -10,6 +10,7 @@ import type {
 } from './types';
 import { CARD_CATALOG, catalogById } from './catalog';
 import { computeValueAtRisk } from './valueAtRisk';
+import { computeFeeDecisions, type FeeAnalysis } from './feeAnalysis';
 import {
   MOCK_BENEFITS,
   MOCK_HOUSEHOLD,
@@ -120,6 +121,12 @@ export class MockClient implements DataClient {
   getValueAtRisk(): Promise<ValueAtRiskSummary> {
     return delay(
       computeValueAtRisk({ benefits, userCards, pointsAccounts }),
+    );
+  }
+
+  getFeeDecisions(withinDays = 90): Promise<FeeAnalysis[]> {
+    return delay(
+      computeFeeDecisions({ userCards, benefits, catalog: CARD_CATALOG, withinDays }),
     );
   }
 }

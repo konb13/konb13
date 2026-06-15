@@ -25,11 +25,13 @@ a real Supabase project with one environment variable.
 | Card list / add-card-from-catalog / per-card benefits | ✅ `app/(tabs)/cards.tsx`, `app/add-card.tsx`, `app/card/[id].tsx` |
 | Points accounts | ✅ `app/(tabs)/points.tsx` |
 | Cash → points estimator (§6 spec) | ✅ `src/data/estimator.ts` (+ unit tests) |
+| Annual-fee keep/downgrade/cancel engine (§10 idea #1) | ✅ `src/data/feeAnalysis.ts` + `app/fee-analysis.tsx` (+ unit tests) |
 | Local expiration reminders (30/7/1 day) | ✅ `src/notifications.ts` |
 | Auth (email magic-link in live mode) | ✅ `app/sign-in.tsx` + Supabase OTP |
 
-**Not in this slice** (later phases): monetization/RevenueCat gating, the
-affiliate layer, the Next.js web SEO site, and the Phase 4 AI award planner.
+**Not in this slice** (later phases): monetization/RevenueCat gating (the fee
+engine is a premium feature once gating lands), the affiliate layer, the
+Next.js web SEO site, and the Phase 4 AI award planner.
 
 ---
 
