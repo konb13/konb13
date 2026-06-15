@@ -3,7 +3,7 @@
  * Plugin Name:       Dental News Writer
  * Plugin URI:        https://github.com/konb13/konb13
  * Description:        Finds trending dental news, writes SEO-optimised articles in your writers' voice, generates a featured image (Higgsfield with DALL-E fallback), and saves them as drafts for review.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            konb13
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // No direct access.
 }
 
-define( 'DNW_VERSION', '1.0.0' );
+define( 'DNW_VERSION', '1.1.0' );
 define( 'DNW_PLUGIN_FILE', __FILE__ );
 define( 'DNW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DNW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

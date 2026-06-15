@@ -118,6 +118,22 @@ $next_run   = wp_next_scheduled( DNW_CRON_HOOK );
 					<th><?php esc_html_e( 'News feeds', 'dental-news-writer' ); ?></th>
 					<td><?php echo esc_html( count( DNW_Settings::feed_list() ) ); ?></td>
 				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Trend research', 'dental-news-writer' ); ?></th>
+					<td>
+						<?php
+						if ( empty( $settings['research_social'] ) ) {
+							esc_html_e( 'Off', 'dental-news-writer' );
+						} else {
+							echo esc_html(
+								'' !== trim( (string) $settings['twitter_bearer_token'] )
+									? __( 'Reddit + X', 'dental-news-writer' )
+									: __( 'Reddit only', 'dental-news-writer' )
+							);
+						}
+						?>
+					</td>
+				</tr>
 			</table>
 			<p>
 				<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . DNW_Admin::SLUG . '-settings' ) ); ?>">

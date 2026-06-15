@@ -105,9 +105,19 @@ class DNW_Plugin {
 		$voice    = new DNW_Voice_Analyzer( $settings );
 		$voice_profile = $voice->get_profile();
 
+		// 2b. Gather Reddit/X trend context (optional, best-effort).
+		$trends = '';
+		if ( ! empty( $settings['research_social'] ) ) {
+			$research = new DNW_Research( $settings );
+			$trends   = $research->context_for( $item['title'] );
+			if ( '' !== $trends ) {
+				$logger->log( 'Added Reddit/X trend context.' );
+			}
+		}
+
 		// 3. Write the article.
 		$writer  = new DNW_Writer( $settings );
-		$article = $writer->write( $item, $voice_profile );
+		$article = $writer->write( $item, $voice_profile, $trends );
 		if ( is_wp_error( $article ) ) {
 			$logger->log( 'Writer error: ' . $article->get_error_message(), 'error' );
 			return $article;

@@ -65,6 +65,12 @@ class DNW_Settings {
 			),
 			'keyword_filter'     => 'dental, dentist, dentistry, oral health, orthodont, implant, hygiene, teeth',
 
+			// Social trend research (Reddit + X/Twitter).
+			'research_social'      => 0,
+			'reddit_user_agent'    => 'DentalNewsWriter/1.0 (WordPress plugin)',
+			'twitter_bearer_token' => '',
+			'research_limit'       => 12,
+
 			// Article generation.
 			'tone'               => 'professional',
 			'word_count'         => 1400,
@@ -127,6 +133,8 @@ class DNW_Settings {
 			'openai_api_key',
 			'higgsfield_api_key',
 			'higgsfield_secret',
+			'twitter_bearer_token',
+			'reddit_user_agent',
 		);
 		foreach ( $text_keys as $k ) {
 			if ( isset( $input[ $k ] ) ) {
@@ -147,6 +155,9 @@ class DNW_Settings {
 		if ( isset( $input['keyword_filter'] ) ) {
 			$out['keyword_filter'] = sanitize_text_field( $input['keyword_filter'] );
 		}
+
+		$out['research_social'] = empty( $input['research_social'] ) ? 0 : 1;
+		$out['research_limit']  = isset( $input['research_limit'] ) ? max( 1, min( 25, absint( $input['research_limit'] ) ) ) : $out['research_limit'];
 
 		$allowed_tones = array( 'professional', 'casual', 'educational', 'conversational', 'authoritative', 'witty' );
 		if ( isset( $input['tone'] ) && in_array( $input['tone'], $allowed_tones, true ) ) {

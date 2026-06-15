@@ -15,6 +15,7 @@ Find trending dental news, write SEO-optimised articles in your writers' voice, 
 Dental News Writer turns the latest trending dental stories into original, publish-ready draft articles for your practice blog.
 
 * **Trend discovery** — pulls the latest items from any RSS/Atom dental news feeds you configure, filtered by keywords.
+* **Social research (optional)** — enriches each article with trending Reddit and X/Twitter discussion about the topic so the writing reflects real questions and terminology. Reddit needs no key; X needs a Bearer token.
 * **Writes in your voice** — learns your house style from your existing published posts *and* lets you paste a manual style guide that takes priority.
 * **SEO + GEO optimised** — keyword-rich headings, TL;DR answer block, FAQ section, meta description, focus keyword, tags, and an on-page SEO score. Writes meta to Yoast or Rank Math automatically.
 * **Featured images** — generates a featured image with Higgsfield, with automatic fallback to OpenAI DALL-E 3, then sideloads it into your Media Library.
@@ -51,6 +52,9 @@ No. It writes an original article *inspired by* the trending angle, with instruc
 Higgsfield's image API is async/job-based and varies by plan. The client accepts several common response shapes and exposes the `dnw_higgsfield_request_body`, `dnw_higgsfield_headers`, and `dnw_higgsfield_poll_url` filters so you can adapt it to your account without editing core files.
 
 == Changelog ==
+
+= 1.1.0 =
+* Added optional Reddit + X/Twitter social trend research to ground articles in real discussion.
 
 = 1.0.0 =
 * Initial release: trend discovery, voice-matched SEO article writing, Higgsfield/DALL-E featured images, draft workflow, and scheduling.

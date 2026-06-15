@@ -94,6 +94,12 @@
       <div class="article-thumb-placeholder"><i class="bi bi-image text-muted" style="font-size:2rem;"></i></div>
       {% endif %}
       <span class="status-badge status-{{ a.status }}">{{ a.status }}</span>
+      {% if a.seo_score %}
+      {% set seo_cls = 'good' if a.seo_score >= 80 else ('ok' if a.seo_score >= 60 else 'low') %}
+      <span class="seo-thumb-badge seo-badge--{{ seo_cls }}" title="On-page SEO score">
+        <i class="bi bi-graph-up-arrow"></i> SEO {{ a.seo_score }}
+      </span>
+      {% endif %}
     </div>
 
     <!-- Body -->

@@ -132,7 +132,17 @@
 
     <!-- SEO settings -->
     <div class="editor-card mb-3">
-      <label class="editor-label">SEO Settings</label>
+      <label class="editor-label d-flex align-items-center justify-content-between">
+        <span>SEO Settings</span>
+        {% set seo_cls = 'na' if not article.seo_score else ('good' if article.seo_score >= 80 else ('ok' if article.seo_score >= 60 else 'low')) %}
+        <span class="seo-badge seo-badge--{{ seo_cls }}" id="seoBadge" title="On-page SEO score">
+          <i class="bi bi-graph-up-arrow"></i> SEO <span id="seoScoreVal">{{ article.seo_score or '—' }}</span>
+        </span>
+      </label>
+      <div id="seoNotes" class="text-muted small mb-2"></div>
+      <button type="button" class="btn btn-sm btn-outline-info w-100 mb-2" onclick="checkSeo()">
+        <i class="bi bi-arrow-repeat"></i> Re-check SEO
+      </button>
       <div class="mb-2">
         <label class="form-label text-muted small">Focus Keyword</label>
         <input type="text" id="fKeyword" class="form-control bg-dark text-white border-secondary form-control-sm"
@@ -238,6 +248,8 @@ async function saveArticle(newStatus) {
       body: JSON.stringify(payload),
     });
     if (!r.ok) throw new Error(await r.text());
+    const saved = await r.json();
+    updateSeoBadge(saved.seo_score);
     alert.className = 'alert alert-success mb-3';
     alert.textContent = '✓ Saved successfully';
     setTimeout(() => alert.classList.add('d-none'), 2500);
@@ -340,6 +352,53 @@ async function deleteAndRedirect() {
   if (!confirm('Delete this article permanently?')) return;
   await fetch(`/api/articles/${ARTICLE_ID}`, { method: 'DELETE' });
   location.href = '/';
+}
+
+// ── SEO score ──────────────────────────────────────────────────────────────
+function seoClass(score) {
+  if (!score && score !== 0) return 'na';
+  if (score >= 80) return 'good';
+  if (score >= 60) return 'ok';
+  return 'low';
+}
+
+function updateSeoBadge(score) {
+  const badge = document.getElementById('seoBadge');
+  const val = document.getElementById('seoScoreVal');
+  if (!badge || !val) return;
+  val.textContent = (score || score === 0) ? score : '—';
+  badge.className = 'seo-badge seo-badge--' + seoClass(score);
+}
+
+// Re-check SEO: persist current edits (without changing status), then fetch a breakdown.
+async function checkSeo() {
+  const notes = document.getElementById('seoNotes');
+  notes.textContent = 'Checking…';
+  // Save edited fields but omit status so it isn't changed.
+  const payload = {
+    title: document.getElementById('fTitle').value.trim(),
+    html_content: quill.root.innerHTML,
+    meta_description: document.getElementById('fMeta').value.trim(),
+    focus_keyword: document.getElementById('fKeyword').value.trim(),
+    slug: document.getElementById('fSlug').value.trim(),
+  };
+  try {
+    await fetch(`/api/articles/${ARTICLE_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const r = await fetch(`/api/articles/${ARTICLE_ID}/seo`);
+    const data = await r.json();
+    updateSeoBadge(data.score);
+    let html = `${data.word_count} words · keyword density ${data.density}%`;
+    if (data.notes && data.notes.length) {
+      html += '<ul class="mb-0 mt-1 ps-3">' + data.notes.map(n => `<li>${n}</li>`).join('') + '</ul>';
+    }
+    notes.innerHTML = html;
+  } catch (e) {
+    notes.textContent = 'SEO check failed.';
+  }
 }
 
 function showAlert(type, msg) {

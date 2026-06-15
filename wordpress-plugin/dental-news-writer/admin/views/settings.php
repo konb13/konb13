@@ -87,6 +87,33 @@ $name = function ( $key ) use ( $opt ) {
 			</tr>
 		</table>
 
+		<!-- Social trend research -->
+		<h2 class="title"><?php esc_html_e( 'Social Trend Research', 'dental-news-writer' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Mine Reddit & X', 'dental-news-writer' ); ?></th>
+				<td>
+					<label><input type="checkbox" name="<?php echo esc_attr( $name( 'research_social' ) ); ?>" value="1" <?php checked( $settings['research_social'], 1 ); ?> /> <?php esc_html_e( 'Enrich each article with trending Reddit/X discussion about the topic', 'dental-news-writer' ); ?></label>
+					<p class="description"><?php esc_html_e( 'Reddit works with no key. X/Twitter needs a Bearer token below; if absent, only Reddit is used.', 'dental-news-writer' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="dnw-tw"><?php esc_html_e( 'X / Twitter Bearer token', 'dental-news-writer' ); ?></label></th>
+				<td>
+					<input type="password" id="dnw-tw" class="regular-text" name="<?php echo esc_attr( $name( 'twitter_bearer_token' ) ); ?>" value="<?php echo esc_attr( $settings['twitter_bearer_token'] ); ?>" autocomplete="off" />
+					<p class="description"><?php esc_html_e( 'Optional. From the X developer portal (v2 recent search).', 'dental-news-writer' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="dnw-ua"><?php esc_html_e( 'Reddit User-Agent', 'dental-news-writer' ); ?></label></th>
+				<td><input type="text" id="dnw-ua" class="regular-text" name="<?php echo esc_attr( $name( 'reddit_user_agent' ) ); ?>" value="<?php echo esc_attr( $settings['reddit_user_agent'] ); ?>" /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="dnw-rl"><?php esc_html_e( 'Posts per source', 'dental-news-writer' ); ?></label></th>
+				<td><input type="number" id="dnw-rl" min="1" max="25" name="<?php echo esc_attr( $name( 'research_limit' ) ); ?>" value="<?php echo esc_attr( $settings['research_limit'] ); ?>" class="small-text" /></td>
+			</tr>
+		</table>
+
 		<!-- Article options -->
 		<h2 class="title"><?php esc_html_e( 'Article Generation', 'dental-news-writer' ); ?></h2>
 		<table class="form-table" role="presentation">

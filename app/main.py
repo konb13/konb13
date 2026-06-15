@@ -206,9 +206,47 @@ async def update_article(article_id: int, request: Request, db: Session = Depend
         else:
             setattr(article, key, val)
 
+    # Recompute on-page SEO score from the (possibly edited) content.
+    try:
+        from modules.seo import score_article
+
+        article.seo_score = score_article(
+            title=article.title,
+            focus_keyword=article.focus_keyword,
+            meta_description=article.meta_description,
+            slug=article.slug,
+            html_content=article.html_content,
+        ).score
+    except Exception:
+        pass
+
     article.updated_at = datetime.utcnow()
     db.commit()
     return article.to_dict()
+
+
+@app.get("/api/articles/{article_id}/seo")
+def article_seo(article_id: int, db: Session = Depends(get_db)):
+    """Return a full SEO breakdown (score + per-check results) for an article."""
+    article = db.query(ArticleModel).filter(ArticleModel.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    from modules.seo import score_article
+
+    result = score_article(
+        title=article.title,
+        focus_keyword=article.focus_keyword,
+        meta_description=article.meta_description,
+        slug=article.slug,
+        html_content=article.html_content,
+    )
+    return {
+        "score": result.score,
+        "checks": result.checks,
+        "notes": result.notes,
+        "word_count": result.word_count,
+        "density": result.density,
+    }
 
 
 @app.delete("/api/articles/{article_id}")

@@ -50,9 +50,10 @@ class DNW_Writer {
 	 *
 	 * @param array  $item          News item (title, summary, link, source).
 	 * @param string $voice_profile Voice/style profile text.
+	 * @param string $trends        Optional Reddit/X trend context.
 	 * @return array|WP_Error Article assoc array.
 	 */
-	public function write( $item, $voice_profile ) {
+	public function write( $item, $voice_profile, $trends = '' ) {
 		$api_key = trim( (string) ( $this->settings['openai_api_key'] ?? '' ) );
 		if ( '' === $api_key ) {
 			return new WP_Error( 'dnw_no_openai_key', __( 'OpenAI API key is required to write articles. Add it in settings.', 'dental-news-writer' ) );
@@ -68,7 +69,7 @@ class DNW_Writer {
 				),
 				array(
 					'role'    => 'user',
-					'content' => $this->user_prompt( $item ),
+					'content' => $this->user_prompt( $item, $trends ),
 				),
 			),
 			array(
@@ -132,10 +133,11 @@ class DNW_Writer {
 	/**
 	 * Build the user prompt from the news item.
 	 *
-	 * @param array $item News item.
+	 * @param array  $item   News item.
+	 * @param string $trends Optional Reddit/X trend context.
 	 * @return string
 	 */
-	private function user_prompt( $item ) {
+	private function user_prompt( $item, $trends = '' ) {
 		$country = $this->settings['country'] ?? 'US';
 		$lang    = $this->settings['language'] ?? 'en';
 
@@ -148,11 +150,16 @@ class DNW_Writer {
 			$context .= 'Source: ' . $item['source'] . "\n";
 		}
 
+		$trend_block = '';
+		if ( '' !== trim( (string) $trends ) ) {
+			$trend_block = "\n" . $trends . "\n";
+		}
+
 		return implode(
 			"\n",
 			array(
 				$context,
-				'',
+				$trend_block,
 				'Audience country: ' . $country . ' | Language: ' . $lang,
 				'',
 				'Write a complete, original dental article on this theme for our practice blog.',
