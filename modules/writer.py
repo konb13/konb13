@@ -73,6 +73,7 @@ class Article:
     categories: list[str]
     slug: str
     tone: str = DEFAULT_TONE
+    seo_score: int = 0
 
 
 _SYSTEM_PROMPT_BASE = """
@@ -94,9 +95,16 @@ Rules:
 """.strip()
 
 
-def _system_prompt_for_tone(tone: str) -> str:
+def _system_prompt_for_tone(tone: str, voice_profile: str = "") -> str:
     tone_instruction = TONES.get(tone, TONES[DEFAULT_TONE])
-    return f"{_SYSTEM_PROMPT_BASE}\n\nTONE INSTRUCTION: {tone_instruction}"
+    prompt = f"{_SYSTEM_PROMPT_BASE}\n\nTONE INSTRUCTION: {tone_instruction}"
+    if voice_profile.strip():
+        prompt += (
+            "\n\nVOICE & STYLE TO MATCH (write so the article sounds like these "
+            "existing writers; this overrides the generic tone where they conflict):\n"
+            + voice_profile.strip()
+        )
+    return prompt
 
 
 def _build_user_prompt(
@@ -179,15 +187,20 @@ def write_article(
     language: str = "en",
     country: str = "US",
     tone: str = DEFAULT_TONE,
+    voice_profile: str = "",
 ) -> Article:
-    """Generate and return a full SEO/GEO optimised Article."""
+    """Generate and return a full SEO/GEO optimised Article.
+
+    If *voice_profile* is provided (see modules.voice), the article is written
+    to sound like the publication's existing writers.
+    """
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     user_prompt = _build_user_prompt(topic, trend_report, language, country)
-    system_prompt = _system_prompt_for_tone(tone)
+    system_prompt = _system_prompt_for_tone(tone, voice_profile)
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=os.getenv("OPENAI_MODEL", "gpt-4o"),
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -197,4 +210,20 @@ def write_article(
     )
 
     raw = response.choices[0].message.content or ""
-    return _parse_response(raw, topic, tone)
+    article = _parse_response(raw, topic, tone)
+
+    # Compute on-page SEO score.
+    try:
+        from .seo import score_article
+
+        article.seo_score = score_article(
+            title=article.title,
+            focus_keyword=article.focus_keyword,
+            meta_description=article.meta_description,
+            slug=article.slug,
+            html_content=article.html_content,
+        ).score
+    except Exception:
+        article.seo_score = 0
+
+    return article

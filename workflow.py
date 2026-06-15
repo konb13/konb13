@@ -104,6 +104,17 @@ def run_workflow(
             f"keywords: [italic]{', '.join(trend_report.top_keywords[:6])}[/italic]"
         )
 
+    # ── Build writer voice profile (so it sounds like your writers) ───────────
+    voice_profile = ""
+    try:
+        from modules.voice import get_voice_profile
+
+        voice_profile = get_voice_profile()
+        if voice_profile:
+            console.print("  [green]✓[/green] Loaded writer voice profile")
+    except Exception as exc:
+        console.print(f"  [yellow]⚠[/yellow] Voice profile skipped: {exc}")
+
     # ── Step 2: Write article ─────────────────────────────────────────────────
     article = run_step(
         "Writing SEO/GEO optimised article with GPT-4o…",
@@ -113,6 +124,7 @@ def run_workflow(
         language,
         country,
         tone,
+        voice_profile,
     )
     console.print(
         f"     [bold]{article.title}[/bold]\n"
@@ -141,6 +153,7 @@ def run_workflow(
             html_content=article.html_content,
             tone=article.tone, language=language, country=country,
             featured_image_path=str(image_path),
+            seo_score=getattr(article, "seo_score", 0),
             status="draft",
         )
         db_art.tags = article.tags
@@ -179,6 +192,7 @@ def _print_summary(article, image_path, result) -> None:
 
     table.add_row("Title", article.title)
     table.add_row("Focus keyword", article.focus_keyword)
+    table.add_row("SEO score", f"{getattr(article, 'seo_score', 0)}/100")
     table.add_row("Meta description", article.meta_description[:80] + "…")
     table.add_row("Tags", ", ".join(article.tags))
     table.add_row("Categories", ", ".join(article.categories))
@@ -204,7 +218,17 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("topic", help="Topic to research and write about")
+    parser.add_argument(
+        "topic",
+        nargs="?",
+        default="",
+        help="Topic to research and write about (optional with --from-news)",
+    )
+    parser.add_argument(
+        "--from-news",
+        action="store_true",
+        help="Discover the latest trending dental news headline from RSS feeds and write about it",
+    )
     parser.add_argument(
         "--country",
         default=os.getenv("TARGET_COUNTRY", "US"),
@@ -223,7 +247,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--image-provider",
-        choices=["dalle", "gemini"],
+        choices=["higgsfield", "dalle", "gemini"],
         default=None,
         help="Image generation provider (overrides IMAGE_PROVIDER in .env)",
     )
@@ -245,9 +269,26 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    topic = args.topic.strip()
+
+    # Resolve a topic from the latest trending dental news if requested.
+    if args.from_news or not topic:
+        from modules.news import latest_headline
+
+        item = latest_headline(topic or None)
+        if item:
+            console.print(f"  [green]✓[/green] Latest news: [bold]{item.title}[/bold] ([italic]{item.source}[/italic])")
+            topic = item.title
+            from modules.news import mark_processed
+
+            mark_processed(item.guid)
+        elif not topic:
+            console.print("[bold red]Error:[/bold red] No topic given and no trending dental news found.")
+            raise SystemExit(1)
+
     try:
         run_workflow(
-            topic=args.topic,
+            topic=topic,
             country=args.country,
             language=args.lang,
             tone=args.tone,

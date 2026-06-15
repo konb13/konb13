@@ -18,7 +18,7 @@ load_dotenv()
 
 @dataclass
 class TrendPost:
-    source: str          # "reddit" | "twitter"
+    source: str          # "reddit" | "twitter" | "news"
     title: str
     body: str
     score: int           # upvotes / like count
@@ -148,15 +148,43 @@ def search_twitter(topic: str, limit: int = 20) -> list[TrendPost]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# News feeds (RSS/Atom)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def search_news(topic: str, limit: int = 15) -> list[TrendPost]:
+    """Return recent news items for *topic* from configured RSS feeds."""
+    from .news import fetch_news
+
+    posts: list[TrendPost] = []
+    # Don't skip processed here: research is read-only context gathering.
+    for item in fetch_news(limit=limit, topic=topic, skip_processed=False):
+        posts.append(
+            TrendPost(
+                source="news",
+                title=item.title,
+                body=item.summary,
+                score=0,
+                url=item.link,
+            )
+        )
+    return posts
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Public entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
 def research_topic(topic: str) -> TrendReport:
     """
-    Aggregate Reddit + Twitter results and return a TrendReport.
+    Aggregate news feeds + Reddit + Twitter results and return a TrendReport.
     Works even if one source fails (degrades gracefully).
     """
     posts: list[TrendPost] = []
+
+    try:
+        posts += search_news(topic)
+    except Exception as exc:
+        print(f"[researcher] News error: {exc}")
 
     try:
         posts += search_reddit(topic)

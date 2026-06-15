@@ -473,8 +473,18 @@ def _do_generate(job_id: int, topic: str, tone: str, language: str, country: str
         except Exception:
             tr = TrendReport(topic=topic)
 
+        # Voice profile (sound like existing writers)
+        try:
+            from modules.voice import get_voice_profile
+            voice_profile = get_voice_profile()
+        except Exception:
+            voice_profile = ""
+
         # Write
-        article_data = write_article(topic=topic, trend_report=tr, language=language, country=country, tone=tone)
+        article_data = write_article(
+            topic=topic, trend_report=tr, language=language, country=country,
+            tone=tone, voice_profile=voice_profile,
+        )
 
         # Image
         img_path = generate_featured_image(topic, article_data.title)
@@ -490,6 +500,7 @@ def _do_generate(job_id: int, topic: str, tone: str, language: str, country: str
             language=language,
             country=country,
             featured_image_path=str(img_path),
+            seo_score=getattr(article_data, "seo_score", 0),
             status="draft",
         )
         db_art.tags = article_data.tags

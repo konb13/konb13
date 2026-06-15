@@ -47,6 +47,9 @@ class ArticleModel(Base):
     _tags = Column("tags", Text, default="[]")
     _categories = Column("categories", Text, default="[]")
 
+    # SEO
+    seo_score = Column(Integer, default=0)
+
     # Image
     featured_image_path = Column(String(1000), default="")
     image_prompt = Column(Text, default="")
@@ -104,6 +107,7 @@ class ArticleModel(Base):
             "country": self.country,
             "tags": self.tags,
             "categories": self.categories,
+            "seo_score": self.seo_score,
             "featured_image_path": self.featured_image_path,
             "image_prompt": self.image_prompt,
             "status": self.status,
@@ -185,6 +189,21 @@ class GenerationJobModel(Base):
 
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
+    _run_light_migrations()
+
+
+def _run_light_migrations() -> None:
+    """Add columns introduced after the initial schema (SQLite-friendly)."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    try:
+        cols = {c["name"] for c in inspector.get_columns("articles")}
+    except Exception:
+        return
+    if "seo_score" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE articles ADD COLUMN seo_score INTEGER DEFAULT 0"))
 
 
 def get_db():

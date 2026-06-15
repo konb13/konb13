@@ -122,7 +122,7 @@ def _publish_via_rest_api(article: Article, image_path: Path) -> PublishResult:
         "title": article.title,
         "content": article.html_content,
         "slug": article.slug,
-        "status": "publish",
+        "status": os.getenv("WP_POST_STATUS", "publish"),
         "featured_media": media_id,
         "categories": category_ids,
         "tags": tag_ids,
@@ -205,11 +205,12 @@ def _publish_via_wpcli_ssh(article: Article, image_path: Path) -> PublishResult:
         title_escaped = article.title.replace("'", "'\\''")
         slug_clean = article.slug
 
+        post_status = os.getenv("WP_POST_STATUS", "publish")
         cmd = (
             f"wp post create "
             f"--post_title='{title_escaped}' "
             f"--post_content='{content_escaped}' "
-            f"--post_status=publish "
+            f"--post_status={shlex.quote(post_status)} "
             f"--post_name='{slug_clean}' "
             f"--post_category='{cats}' "
             f"--tags_input='{tags}' "

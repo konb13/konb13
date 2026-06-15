@@ -3,10 +3,11 @@
 > **Looking for the native WordPress plugin?** See [`wordpress-plugin/dental-news-writer/`](wordpress-plugin/dental-news-writer/) — a self-contained PHP plugin that finds trending **dental** news, writes SEO articles in your writers' voice, generates a featured image (Higgsfield → DALL-E fallback), and saves drafts for review. Install it directly in WP Admin; no Python required. See its `readme.txt` for setup.
 
 A Python CLI that:
-1. **Researches** trending content on Reddit & X/Twitter for your topic
-2. **Writes** a fully SEO + GEO optimised article using GPT-4o
-3. **Generates** a featured image with DALL-E 3 or Gemini Imagen 3
-4. **Publishes** directly to your WordPress site on WPEngine
+1. **Discovers** the latest trending dental news from RSS feeds *and* researches Reddit & X/Twitter for your topic
+2. **Writes** a fully SEO + GEO optimised article using GPT-4o — in your current writers' voice
+3. **Scores** the article's on-page SEO (0–100) before you publish
+4. **Generates** a featured image with Higgsfield (DALL-E 3 / Gemini fallback)
+5. **Publishes** directly to your WordPress site on WPEngine (draft by default for review)
 
 ---
 
@@ -30,12 +31,20 @@ cp .env.example .env
 ### 3. Run
 
 ```bash
-python workflow.py "best AI tools for small business"
-python workflow.py "electric vehicles 2025" --country UK --image-provider gemini
-python workflow.py "home gym equipment" --draft        # publish as draft
-python workflow.py "keto diet tips" --no-publish       # generate only, skip WP upload
-python workflow.py "travel hacks" --skip-research      # skip Reddit/X (faster)
+python workflow.py --from-news                          # discover & write the latest trending dental story
+python workflow.py "dental implants 2025"               # research a specific topic (news + Reddit + X)
+python workflow.py "teeth whitening" --image-provider higgsfield --draft
+python workflow.py "keto diet tips" --no-publish        # generate only, skip WP upload
+python workflow.py "travel hacks" --skip-research       # skip research (faster)
 ```
+
+### New capabilities
+
+- **`--from-news`** — pulls the freshest dental headline from your configured RSS feeds (`NEWS_FEEDS`) and writes an original article about it. Processed stories are remembered in `data/processed_news.json` so they aren't reused.
+- **Writer voice** — set `VOICE_LEARN=1` to learn your house style from your site's published posts (via the WordPress REST API), and/or paste a `VOICE_STYLE_GUIDE`. The style guide takes priority. Cached for `VOICE_CACHE_HOURS`.
+- **Higgsfield images** — set `IMAGE_PROVIDER=higgsfield` with `HIGGSFIELD_API_KEY`; falls back to DALL-E 3 / Gemini automatically.
+- **SEO score** — every run prints an on-page SEO score (and stores it in the dashboard DB).
+- **Draft by default** — set `WP_POST_STATUS=draft` to send articles for review instead of publishing live.
 
 ---
 

@@ -86,12 +86,19 @@ def run_scheduled_generation(schedule_id: int) -> None:
                         "modules.researcher", fromlist=["TrendReport"]
                     ).TrendReport(topic=topic)
 
+                try:
+                    from modules.voice import get_voice_profile
+                    voice_profile = get_voice_profile()
+                except Exception:
+                    voice_profile = ""
+
                 article_data = write_article(
                     topic=topic,
                     trend_report=tr,
                     language=schedule.language,
                     country=schedule.country,
                     tone=schedule.tone,
+                    voice_profile=voice_profile,
                 )
 
                 img_path = generate_featured_image(topic, article_data.title)
@@ -126,6 +133,7 @@ def run_scheduled_generation(schedule_id: int) -> None:
                     language=schedule.language,
                     country=schedule.country,
                     featured_image_path=str(img_path),
+                    seo_score=getattr(article_data, "seo_score", 0),
                     status=status,
                     schedule_id=schedule_id,
                     wp_post_id=wp_post_id,
