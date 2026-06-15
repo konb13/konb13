@@ -1,5 +1,7 @@
 # Auto Article → WordPress Workflow
 
+> **Looking for the native WordPress plugin?** See [`wordpress-plugin/dental-news-writer/`](wordpress-plugin/dental-news-writer/) — a self-contained PHP plugin that finds trending **dental** news, writes SEO articles in your writers' voice, generates a featured image (Higgsfield → DALL-E fallback), and saves drafts for review. Install it directly in WP Admin; no Python required. See its `readme.txt` for setup.
+
 A Python CLI that:
 1. **Researches** trending content on Reddit & X/Twitter for your topic
 2. **Writes** a fully SEO + GEO optimised article using GPT-4o
