@@ -32,6 +32,8 @@ export default function RootLayout() {
         <Stack.Screen name="fee-analysis" options={{ title: 'Fee Decisions' }} />
         <Stack.Screen name="two-player" options={{ title: 'Two-Player Plan' }} />
         <Stack.Screen name="estimator" options={{ title: 'Points Estimator' }} />
+        <Stack.Screen name="retention" options={{ title: 'Retention Offers' }} />
+        <Stack.Screen name="log-retention" options={{ presentation: 'modal', title: 'Log Offer' }} />
       </Stack>
     </SafeAreaProvider>
   );

@@ -1,8 +1,11 @@
 import type {
+  AddRetentionOfferInput,
   Benefit,
   CardCatalogEntry,
   Household,
   PointsAccount,
+  RetentionOffer,
+  RetentionStats,
   User,
   UserCard,
   ValueAtRiskSummary,
@@ -51,6 +54,11 @@ export interface DataClient {
   getFeeDecisions(withinDays?: number): Promise<FeeAnalysis[]>;
   /** Sequenced two-player signup-bonus application plan for the household. */
   getTwoPlayerPlan(targets: PlanRequestTarget[], options?: PlannerOptions): Promise<TwoPlayerPlan>;
+
+  // retention-offer crowdsourcing
+  listRetentionOffers(catalogId?: string): Promise<RetentionOffer[]>;
+  addRetentionOffer(input: AddRetentionOfferInput): Promise<RetentionOffer>;
+  getRetentionStats(): Promise<RetentionStats[]>;
 }
 
 export interface AddUserCardInput {

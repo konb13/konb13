@@ -21,5 +21,6 @@ export * from './types';
 export * from './client';
 export * from './feeAnalysis';
 export * from './twoPlayerPlanner';
+export { computeRetentionStats, computeAllRetentionStats } from './retentionOffers';
 export { SIGNUP_BONUSES, getSignupBonus } from './signupBonuses';
 export { USE_MOCK_DATA } from './config';

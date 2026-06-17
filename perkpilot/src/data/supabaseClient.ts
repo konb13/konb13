@@ -14,7 +14,9 @@ import type {
 import { computeValueAtRisk } from './valueAtRisk';
 import { computeFeeDecisions, type FeeAnalysis } from './feeAnalysis';
 import { buildPlanFromData, type PlanRequestTarget, type PlannerOptions, type TwoPlayerPlan } from './twoPlayerPlanner';
+import { computeAllRetentionStats } from './retentionOffers';
 import { getSignupBonus } from './signupBonuses';
+import type { AddRetentionOfferInput, RetentionOffer, RetentionStats } from './types';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
 
 // Live implementation. RLS scopes every read/write to the caller's household,
@@ -139,5 +141,28 @@ export class SupabaseDataClient implements DataClient {
       this.getCatalog(),
     ]);
     return buildPlanFromData({ members, userCards, catalog, requests: targets, getSignupBonus, options });
+  }
+
+  async listRetentionOffers(catalogId?: string): Promise<RetentionOffer[]> {
+    let query = this.sb.from('retention_offers').select('*').order('reported_at', { ascending: false });
+    if (catalogId) query = query.eq('catalog_id', catalogId);
+    const { data } = await query;
+    return (data as RetentionOffer[]) ?? [];
+  }
+
+  async addRetentionOffer(input: AddRetentionOfferInput): Promise<RetentionOffer> {
+    const { data: auth } = await this.sb.auth.getUser();
+    const { data, error } = await this.sb
+      .from('retention_offers')
+      .insert({ ...input, user_id: auth.user?.id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as RetentionOffer;
+  }
+
+  async getRetentionStats(): Promise<RetentionStats[]> {
+    const offers = await this.listRetentionOffers();
+    return computeAllRetentionStats(offers);
   }
 }

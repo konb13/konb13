@@ -187,3 +187,50 @@ export interface ValueAtRiskSummary {
   total_at_risk_usd: number;
   items: ValueAtRiskItem[];
 }
+
+// ---------------------------------------------------------------------------
+// Retention-offer crowdsourcing (build plan §10, idea #2). Members log the
+// offers they were given to keep a card; aggregated, this is unique data that
+// strengthens the keep/cancel recommendation and seeds web content.
+// ---------------------------------------------------------------------------
+
+export type RetentionOutcome = 'kept' | 'downgraded' | 'canceled';
+export type RetentionChannel = 'phone' | 'chat' | 'app';
+export type RetentionOfferType = 'points' | 'statement_credit' | 'fee_waiver' | 'spend_bonus' | 'none';
+
+export interface RetentionOffer {
+  id: UUID;
+  catalog_id: UUID;
+  user_id: UUID;
+  reported_at: string;
+  channel: RetentionChannel;
+  offer_type: RetentionOfferType;
+  points_offered: number | null;
+  value_usd: number | null;
+  /** Spend that had to be met to unlock the offer, if any. */
+  spend_required: number | null;
+  note: string | null;
+  outcome: RetentionOutcome;
+}
+
+export interface RetentionStats {
+  catalog_id: UUID;
+  sample_size: number;
+  /** Share of reports that came with a real (non-'none') offer. */
+  offer_rate: number;
+  median_value_usd: number | null;
+  typical_points: number | null;
+  kept_rate: number;
+  latest_note: string | null;
+}
+
+export interface AddRetentionOfferInput {
+  catalog_id: UUID;
+  channel: RetentionChannel;
+  offer_type: RetentionOfferType;
+  points_offered: number | null;
+  value_usd: number | null;
+  spend_required: number | null;
+  note: string | null;
+  outcome: RetentionOutcome;
+}

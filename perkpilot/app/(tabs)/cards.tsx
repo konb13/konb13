@@ -43,6 +43,7 @@ export default function Cards() {
         <Row icon="cut" iconBg={c.amber} title="Annual fee decisions" chevron onPress={() => router.push('/fee-analysis')} />
         <Row icon="people" iconBg={c.green} title="Two-player bonus plan" chevron onPress={() => router.push('/two-player')} />
         <Row icon="calculator" iconBg={c.accent} title="Points estimator" chevron onPress={() => router.push('/estimator')} />
+        <Row icon="chatbubbles" iconBg={c.green} title="Retention offers" chevron onPress={() => router.push('/retention')} />
       </Section>
 
       {members.map((m) => {

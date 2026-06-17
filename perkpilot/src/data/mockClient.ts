@@ -12,11 +12,14 @@ import { CARD_CATALOG, catalogById } from './catalog';
 import { computeValueAtRisk } from './valueAtRisk';
 import { computeFeeDecisions, type FeeAnalysis } from './feeAnalysis';
 import { buildPlanFromData, type PlanRequestTarget, type PlannerOptions, type TwoPlayerPlan } from './twoPlayerPlanner';
+import { computeAllRetentionStats } from './retentionOffers';
 import { getSignupBonus } from './signupBonuses';
+import type { AddRetentionOfferInput, RetentionOffer, RetentionStats } from './types';
 import {
   MOCK_BENEFITS,
   MOCK_HOUSEHOLD,
   MOCK_POINTS_ACCOUNTS,
+  MOCK_RETENTION_OFFERS,
   MOCK_USERS,
   MOCK_USER_CARDS,
 } from './mockData';
@@ -28,6 +31,7 @@ let session: Session | null = { userId: MOCK_USERS[0].id, email: MOCK_USERS[0].e
 const userCards: UserCard[] = [...MOCK_USER_CARDS];
 const benefits: Benefit[] = [...MOCK_BENEFITS];
 const pointsAccounts: PointsAccount[] = [...MOCK_POINTS_ACCOUNTS];
+const retentionOffers: RetentionOffer[] = [...MOCK_RETENTION_OFFERS];
 
 let idSeq = 1000;
 const nextId = (prefix: string) => `${prefix}_${++idSeq}`;
@@ -143,6 +147,26 @@ export class MockClient implements DataClient {
         options,
       }),
     );
+  }
+
+  listRetentionOffers(catalogId?: string): Promise<RetentionOffer[]> {
+    const result = catalogId ? retentionOffers.filter((o) => o.catalog_id === catalogId) : [...retentionOffers];
+    return delay(result.sort((a, b) => b.reported_at.localeCompare(a.reported_at)));
+  }
+
+  addRetentionOffer(input: AddRetentionOfferInput): Promise<RetentionOffer> {
+    const offer: RetentionOffer = {
+      id: nextId('ro'),
+      user_id: session?.userId ?? MOCK_USERS[0].id,
+      reported_at: new Date().toISOString().slice(0, 10),
+      ...input,
+    };
+    retentionOffers.push(offer);
+    return delay(offer);
+  }
+
+  getRetentionStats(): Promise<RetentionStats[]> {
+    return delay(computeAllRetentionStats(retentionOffers));
   }
 }
 

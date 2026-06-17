@@ -1,9 +1,44 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { getClient } from '@/data';
-import type { FeeAnalysis, FeeRecommendation } from '@/data';
+import type { FeeAnalysis, FeeRecommendation, RetentionStats } from '@/data';
 import { useAsync } from '@/hooks/useAsync';
 import { Screen, Card, Pill, ProgressBar, Loading, EmptyState } from '@/ui/components';
-import { space, typography, useTheme, type Palette } from '@/ui/theme';
+import { radius, space, typography, useTheme, type Palette } from '@/ui/theme';
+
+function renderRetentionHint(a: FeeAnalysis, stats: RetentionStats | undefined, c: Palette) {
+  // Only nudge when the math says downgrade/cancel — "call retention first".
+  if (!stats || (a.recommendation !== 'downgrade' && a.recommendation !== 'cancel')) return null;
+  const value = stats.median_value_usd
+    ? `~$${stats.median_value_usd.toLocaleString()}`
+    : stats.typical_points
+      ? `~${(stats.typical_points / 1000).toFixed(0)}k pts`
+      : 'an offer';
+  return (
+    <Pressable
+      onPress={() => router.push('/retention')}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space(2),
+          marginTop: space(3),
+          padding: space(3),
+          borderRadius: radius.sm,
+          backgroundColor: c.accentSoft,
+        },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <Ionicons name="chatbubbles" size={18} color={c.accent} />
+      <Text style={[typography.footnote, { color: c.accent, flex: 1, fontWeight: '600' }]}>
+        {Math.round(stats.offer_rate * 100)}% of members got {value} to keep this. Call retention before canceling.
+      </Text>
+      <Ionicons name="chevron-forward" size={16} color={c.accent} />
+    </Pressable>
+  );
+}
 
 const recMeta = (r: FeeRecommendation, c: Palette): { label: string; color: string } => {
   switch (r) {
@@ -18,9 +53,19 @@ const recMeta = (r: FeeRecommendation, c: Palette): { label: string; color: stri
   }
 };
 
+interface FeeView {
+  items: FeeAnalysis[];
+  retention: Record<string, RetentionStats>;
+}
+
 export default function FeeAnalysisScreen() {
   const { c } = useTheme();
-  const { data, loading } = useAsync<FeeAnalysis[]>(() => getClient().getFeeDecisions(120));
+  const { data, loading } = useAsync<FeeView>(async () => {
+    const client = getClient();
+    const [items, stats] = await Promise.all([client.getFeeDecisions(120), client.getRetentionStats()]);
+    const retention = Object.fromEntries(stats.map((s) => [s.catalog_id, s]));
+    return { items, retention };
+  });
 
   if (loading && !data) {
     return (
@@ -30,7 +75,7 @@ export default function FeeAnalysisScreen() {
     );
   }
 
-  const items = data ?? [];
+  const { items, retention } = data ?? { items: [], retention: {} };
 
   return (
     <Screen scroll>
@@ -69,6 +114,8 @@ export default function FeeAnalysisScreen() {
               ) : null}
 
               <Text style={[typography.subhead, { color: c.text, marginTop: space(3), lineHeight: 20 }]}>{a.headline}</Text>
+
+              {renderRetentionHint(a, retention[a.catalog_id], c)}
             </Card>
           );
         })

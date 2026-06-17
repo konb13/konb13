@@ -25,7 +25,8 @@ a real Supabase project with one environment variable.
 | Card list / add-card-from-catalog / per-card benefits | ✅ `app/(tabs)/cards.tsx`, `app/add-card.tsx`, `app/card/[id].tsx` |
 | Points accounts | ✅ `app/(tabs)/points.tsx` |
 | Cash → points estimator (§6 spec) | ✅ `src/data/estimator.ts` + `app/estimator.tsx` (+ unit tests) |
-| Apple-style adaptive UI (light/dark, inset grouped lists, SF icons) | ✅ `src/ui/theme.ts` + `src/ui/components.tsx` |
+| Retention-offer crowdsourcing (§10 idea #2) | ✅ `src/data/retentionOffers.ts` + `app/retention.tsx`, `app/log-retention.tsx` (+ unit tests) |
+| Apple-style adaptive UI + brand assets (light/dark, inset lists, frosted tab bar) | ✅ `src/ui/theme.ts`, `src/ui/components.tsx`, `scripts/gen-assets.mjs` |
 | Annual-fee keep/downgrade/cancel engine (§10 idea #1) | ✅ `src/data/feeAnalysis.ts` + `app/fee-analysis.tsx` (+ unit tests) |
 | Two-player signup-bonus planner — 5/24 + referral routing (§10 idea #3) | ✅ `src/data/twoPlayerPlanner.ts`, `issuerRules.ts` + `app/two-player.tsx` (+ unit tests) |
 | Local expiration reminders (30/7/1 day) | ✅ `src/notifications.ts` |
@@ -82,6 +83,25 @@ npm start          # then press i / a / w for iOS, Android, web
 
 The app boots on the bundled two-person household. The **At Risk** tab sums the
 credits, certs, and points the household would lose if it did nothing.
+
+### Run it on your phone (Expo Go)
+
+```bash
+cd perkpilot
+npm install
+npx expo start          # a QR code appears in the terminal
+```
+
+Install **Expo Go** from the App Store / Play Store and scan the QR code (use
+the Camera app on iOS). The app loads over the local network on your device —
+no build step. Push notifications are limited inside Expo Go; for full
+notification testing, make a dev build with `npx expo run:ios`.
+
+### Regenerate brand assets
+
+```bash
+node scripts/gen-assets.mjs   # rewrites assets/icon.png, splash, adaptive-icon, favicon
+```
 
 ### Verify the core logic without a device
 

@@ -10,6 +10,7 @@ export type FeeRecommendation = 'keep' | 'keep_if_used' | 'downgrade' | 'cancel'
 
 export interface FeeAnalysis {
   user_card_id: string;
+  catalog_id: string;
   card_name: string;
   annual_fee: number;
   fee_due_date: string | null;
@@ -88,6 +89,7 @@ export function analyzeAnnualFee(input: FeeAnalysisInput): FeeAnalysis {
 
   return {
     user_card_id: card.id,
+    catalog_id: catalog.id,
     card_name,
     annual_fee,
     fee_due_date: card.annual_fee_due_date,

@@ -1,4 +1,4 @@
-import type { Benefit, Household, PointsAccount, User, UserCard } from './types';
+import type { Benefit, Household, PointsAccount, RetentionOffer, User, UserCard } from './types';
 
 // A realistic two-person household so the app demos end-to-end with no backend.
 // Dates are intentionally near "today" so the Value-at-Risk feed lights up.
@@ -42,6 +42,15 @@ export const MOCK_BENEFITS: Benefit[] = [
   // Bonvoy Brilliant (Partner)
   { id: 'b_6', user_card_id: 'uc_5', type: 'free_night_cert', name: 'Annual Free Night Award (85k)', est_value_usd: 600, expiration_date: iso(40), reset_cycle: 'cardmember_year', used: false, used_date: null, notify_days_before: [60, 30, 7] },
   { id: 'b_7', user_card_id: 'uc_5', type: 'statement_credit', name: 'Dining Credit (this month)', est_value_usd: 25, expiration_date: iso(12), reset_cycle: 'calendar_year', used: false, used_date: null, notify_days_before: [7, 1] },
+];
+
+// Crowdsourced retention reports (anonymized aggregate across all members).
+export const MOCK_RETENTION_OFFERS: RetentionOffer[] = [
+  { id: 'ro_1', catalog_id: 'cat_amex_platinum', user_id: 'u_1', reported_at: iso(-40), channel: 'chat', offer_type: 'points', points_offered: 50000, value_usd: 700, spend_required: 4000, note: 'Chat offered 50k MR for $4k spend in 3 months.', outcome: 'kept' },
+  { id: 'ro_2', catalog_id: 'cat_amex_platinum', user_id: 'u_2', reported_at: iso(-120), channel: 'phone', offer_type: 'statement_credit', points_offered: null, value_usd: 200, spend_required: null, note: 'Phone gave a $200 statement credit, no spend.', outcome: 'kept' },
+  { id: 'ro_3', catalog_id: 'cat_amex_platinum', user_id: 'u_1', reported_at: iso(-220), channel: 'phone', offer_type: 'none', points_offered: null, value_usd: null, spend_required: null, note: 'No retention offer this time.', outcome: 'downgraded' },
+  { id: 'ro_4', catalog_id: 'cat_csr', user_id: 'u_1', reported_at: iso(-60), channel: 'phone', offer_type: 'points', points_offered: 50000, value_usd: 750, spend_required: 4000, note: 'Got 50k UR to keep, met spend easily.', outcome: 'kept' },
+  { id: 'ro_5', catalog_id: 'cat_bonvoy_brilliant', user_id: 'u_2', reported_at: iso(-15), channel: 'chat', offer_type: 'fee_waiver', points_offered: null, value_usd: 300, spend_required: null, note: 'Partial fee waiver offered via chat.', outcome: 'kept' },
 ];
 
 export const MOCK_POINTS_ACCOUNTS: PointsAccount[] = [
