@@ -32,7 +32,7 @@ export function Screen({
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: c.bg }}>
       {scroll ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: space(10) }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingBottom: space(24) }} showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
       ) : (
