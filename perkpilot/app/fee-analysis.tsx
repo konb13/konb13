@@ -1,18 +1,25 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { getClient } from '@/data';
 import type { FeeAnalysis, FeeRecommendation } from '@/data';
 import { useAsync } from '@/hooks/useAsync';
-import { Screen, Card, Body, Badge, Loading, Empty } from '@/ui/components';
-import { colors, radius, space } from '@/ui/theme';
+import { Screen, Card, Pill, ProgressBar, Loading, EmptyState } from '@/ui/components';
+import { space, typography, useTheme, type Palette } from '@/ui/theme';
 
-const REC_META: Record<FeeRecommendation, { label: string; color: string }> = {
-  keep: { label: 'Keep', color: colors.green },
-  keep_if_used: { label: 'Keep if used', color: colors.amber },
-  downgrade: { label: 'Downgrade', color: colors.amber },
-  cancel: { label: 'Cancel', color: colors.red },
+const recMeta = (r: FeeRecommendation, c: Palette): { label: string; color: string } => {
+  switch (r) {
+    case 'keep':
+      return { label: 'Keep', color: c.green };
+    case 'keep_if_used':
+      return { label: 'Keep if used', color: c.amber };
+    case 'downgrade':
+      return { label: 'Downgrade', color: c.amber };
+    case 'cancel':
+      return { label: 'Cancel', color: c.red };
+  }
 };
 
 export default function FeeAnalysisScreen() {
+  const { c } = useTheme();
   const { data, loading } = useAsync<FeeAnalysis[]>(() => getClient().getFeeDecisions(120));
 
   if (loading && !data) {
@@ -23,74 +30,49 @@ export default function FeeAnalysisScreen() {
     );
   }
 
+  const items = data ?? [];
+
   return (
-    <Screen>
-      <FlatList
-        data={data ?? []}
-        keyExtractor={(a) => a.user_card_id}
-        contentContainerStyle={{ padding: space(4) }}
-        ListHeaderComponent={
-          <Text style={styles.intro}>
-            Cards with a fee posting in the next 120 days, and whether the benefits
-            you'll realistically use justify it.
-          </Text>
-        }
-        ListEmptyComponent={<Empty message="No annual fees due soon. Nothing to decide." />}
-        renderItem={({ item }) => <FeeCard analysis={item} />}
-      />
+    <Screen scroll>
+      <Text style={[typography.subhead, { color: c.textSecondary, marginHorizontal: space(5), marginTop: space(2), marginBottom: space(3) }]}>
+        Cards with a fee posting in the next 120 days, and whether the benefits you'll
+        realistically use justify it.
+      </Text>
+
+      {items.length === 0 ? (
+        <View style={{ marginTop: space(12) }}>
+          <EmptyState icon="checkmark-circle" title="No fees due soon" message="Nothing to decide right now." />
+        </View>
+      ) : (
+        items.map((a) => {
+          const meta = recMeta(a.recommendation, c);
+          const pct = a.annual_fee > 0 ? a.realized_value / a.annual_fee : 1;
+          return (
+            <Card key={a.user_card_id}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space(1) }}>
+                <Text style={[typography.headline, { color: c.text, flex: 1, paddingRight: space(2) }]}>{a.card_name}</Text>
+                <Pill label={meta.label} color={meta.color} soft={false} />
+              </View>
+              <Text style={[typography.footnote, { color: c.textSecondary }]}>
+                ${a.annual_fee.toLocaleString()}/yr{a.days_until_fee != null ? ` · due in ${a.days_until_fee} days` : ''}
+              </Text>
+
+              {a.annual_fee > 0 ? (
+                <View style={{ marginTop: space(3) }}>
+                  <ProgressBar progress={pct} color={pct >= 1 ? c.green : c.accent} />
+                  <Text style={[typography.caption, { color: c.textSecondary, marginTop: space(2) }]}>
+                    ${a.realized_value.toLocaleString()} used
+                    {a.remaining_value > 0 ? ` · $${a.remaining_value.toLocaleString()} still available` : ''} of $
+                    {a.annual_fee.toLocaleString()}
+                  </Text>
+                </View>
+              ) : null}
+
+              <Text style={[typography.subhead, { color: c.text, marginTop: space(3), lineHeight: 20 }]}>{a.headline}</Text>
+            </Card>
+          );
+        })
+      )}
     </Screen>
   );
 }
-
-function FeeCard({ analysis }: { analysis: FeeAnalysis }) {
-  const meta = REC_META[analysis.recommendation];
-  const pct = analysis.annual_fee > 0
-    ? Math.min(1, analysis.realized_value / analysis.annual_fee)
-    : 1;
-
-  return (
-    <Card>
-      <View style={styles.row}>
-        <Text style={styles.name}>{analysis.card_name}</Text>
-        <Badge label={meta.label} color={meta.color} />
-      </View>
-
-      <Body dim>
-        ${analysis.annual_fee.toLocaleString()}/yr
-        {analysis.days_until_fee != null ? ` · due in ${analysis.days_until_fee} days` : ''}
-      </Body>
-
-      {analysis.annual_fee > 0 && (
-        <>
-          <View style={styles.track}>
-            <View
-              style={[
-                styles.fill,
-                { width: `${pct * 100}%`, backgroundColor: pct >= 1 ? colors.green : colors.primary },
-              ]}
-            />
-          </View>
-          <Text style={styles.scale}>
-            ${analysis.realized_value.toLocaleString()} used
-            {analysis.remaining_value > 0
-              ? ` · $${analysis.remaining_value.toLocaleString()} still available`
-              : ''}
-            {' '}of ${analysis.annual_fee.toLocaleString()}
-          </Text>
-        </>
-      )}
-
-      <Text style={styles.headline}>{analysis.headline}</Text>
-    </Card>
-  );
-}
-
-const styles = StyleSheet.create({
-  intro: { color: colors.textDim, fontSize: 13, marginBottom: space(3), lineHeight: 19 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space(1) },
-  name: { color: colors.text, fontSize: 17, fontWeight: '700', flex: 1, paddingRight: space(2) },
-  track: { height: 8, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, marginTop: space(3), overflow: 'hidden' },
-  fill: { height: 8, borderRadius: radius.sm },
-  scale: { color: colors.textDim, fontSize: 12, marginTop: space(2) },
-  headline: { color: colors.text, fontSize: 14, lineHeight: 20, marginTop: space(3) },
-});

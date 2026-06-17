@@ -1,11 +1,19 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import type { Ionicons } from '@expo/vector-icons';
 import { getClient } from '@/data';
 import type { ValueAtRiskItem, ValueAtRiskSummary } from '@/data';
 import { useAsync } from '@/hooks/useAsync';
-import { Screen, Card, Body, Badge, Loading, Empty } from '@/ui/components';
-import { colors, space, urgencyColor } from '@/ui/theme';
+import { Screen, LargeTitle, Card, Section, Row, Pill, Loading, EmptyState } from '@/ui/components';
+import { space, typography, urgencyColor, useTheme } from '@/ui/theme';
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const ICON: Record<string, IconName> = {
+  points: 'sparkles',
+};
 
 export default function Dashboard() {
+  const { c } = useTheme();
   const { data, loading } = useAsync<ValueAtRiskSummary>(() => getClient().getValueAtRisk());
 
   if (loading && !data) {
@@ -19,53 +27,54 @@ export default function Dashboard() {
   const summary = data ?? { total_at_risk_usd: 0, items: [] };
 
   return (
-    <Screen>
-      <View style={styles.header}>
-        <Text style={styles.label}>VALUE AT RISK · HOUSEHOLD</Text>
-        <Text style={styles.amount}>${summary.total_at_risk_usd.toLocaleString()}</Text>
-        <Body dim>Credits, certs, and points you'll lose if you do nothing.</Body>
-      </View>
+    <Screen scroll>
+      <LargeTitle>At Risk</LargeTitle>
 
-      <FlatList
-        data={summary.items}
-        keyExtractor={(i) => i.kind + i.id}
-        contentContainerStyle={{ padding: space(4) }}
-        ListEmptyComponent={<Empty message="Nothing at risk right now. Nicely done." />}
-        renderItem={({ item }) => <RiskRow item={item} />}
-      />
+      <Card style={{ paddingVertical: space(5) }}>
+        <Text style={[typography.footnote, { color: c.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 }]}>
+          Household value at risk
+        </Text>
+        <Text style={[styles.total, { color: c.text }]}>${summary.total_at_risk_usd.toLocaleString()}</Text>
+        <Text style={[typography.subhead, { color: c.textSecondary }]}>
+          Credits, certificates, and points you'll lose if you do nothing.
+        </Text>
+      </Card>
+
+      {summary.items.length === 0 ? (
+        <View style={{ marginTop: space(16) }}>
+          <EmptyState icon="checkmark-circle" title="Nothing at risk" message="You're all caught up. Nicely done." />
+        </View>
+      ) : (
+        <Section header="Expiring soon">
+          {summary.items.map((item) => (
+            <RiskRow key={item.kind + item.id} item={item} />
+          ))}
+        </Section>
+      )}
     </Screen>
   );
 }
 
 function RiskRow({ item }: { item: ValueAtRiskItem }) {
-  const color = urgencyColor(item.urgency);
+  const { c } = useTheme();
+  const color = urgencyColor(item.urgency, c);
   const days = item.days_left;
-  const dueLabel =
-    days === null ? 'No date' : days <= 0 ? 'Today' : `${days} day${days === 1 ? '' : 's'}`;
+  const label = days === null ? 'No date' : days <= 0 ? 'Today' : `${days}d`;
+  const icon: IconName = item.kind === 'points' ? ICON.points : 'pricetags';
 
   return (
-    <Card>
-      <View style={styles.row}>
-        <View style={{ flex: 1, paddingRight: space(3) }}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Body dim>{item.subtitle}</Body>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: space(2) }}>
-          {item.est_value_usd > 0 && (
-            <Text style={styles.value}>${item.est_value_usd.toLocaleString()}</Text>
-          )}
-          <Badge label={dueLabel} color={color} />
-        </View>
-      </View>
-    </Card>
+    <Row
+      icon={icon}
+      iconBg={color}
+      title={item.title}
+      subtitle={item.subtitle}
+      value={item.est_value_usd > 0 ? `$${item.est_value_usd.toLocaleString()}` : undefined}
+      valueColor={c.text}
+      trailing={<View style={{ marginLeft: space(2) }}><Pill label={label} color={color} /></View>}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  header: { padding: space(5), paddingBottom: space(2) },
-  label: { color: colors.textDim, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  amount: { color: colors.text, fontSize: 40, fontWeight: '800', marginVertical: space(1) },
-  row: { flexDirection: 'row', alignItems: 'flex-start' },
-  title: { color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: space(1) },
-  value: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  total: { ...typography.largeTitle, fontSize: 44, marginVertical: space(1) },
 });

@@ -24,7 +24,8 @@ a real Supabase project with one environment variable.
 | Value-at-Risk dashboard (traffic-light urgency) | ✅ `app/(tabs)/index.tsx` + `supabase/migrations/0003_value_at_risk.sql` |
 | Card list / add-card-from-catalog / per-card benefits | ✅ `app/(tabs)/cards.tsx`, `app/add-card.tsx`, `app/card/[id].tsx` |
 | Points accounts | ✅ `app/(tabs)/points.tsx` |
-| Cash → points estimator (§6 spec) | ✅ `src/data/estimator.ts` (+ unit tests) |
+| Cash → points estimator (§6 spec) | ✅ `src/data/estimator.ts` + `app/estimator.tsx` (+ unit tests) |
+| Apple-style adaptive UI (light/dark, inset grouped lists, SF icons) | ✅ `src/ui/theme.ts` + `src/ui/components.tsx` |
 | Annual-fee keep/downgrade/cancel engine (§10 idea #1) | ✅ `src/data/feeAnalysis.ts` + `app/fee-analysis.tsx` (+ unit tests) |
 | Two-player signup-bonus planner — 5/24 + referral routing (§10 idea #3) | ✅ `src/data/twoPlayerPlanner.ts`, `issuerRules.ts` + `app/two-player.tsx` (+ unit tests) |
 | Local expiration reminders (30/7/1 day) | ✅ `src/notifications.ts` |
@@ -59,8 +60,8 @@ perkpilot/
 │  ├─ card/[id].tsx         # per-card benefits + used toggle
 │  └─ add-card.tsx          # add a card from the catalog
 ├─ src/
-│  ├─ data/                 # types, catalog, program_reference, clients, estimator, value-at-risk
-│  ├─ ui/                   # theme + component kit
+│  ├─ data/                 # types, catalog, program_reference, clients, estimator, value-at-risk, planners
+│  ├─ ui/                   # adaptive iOS theme (theme.ts) + component kit (components.tsx)
 │  ├─ hooks/                # useAsync (load + refresh on focus)
 │  └─ notifications.ts      # local 30/7/1-day reminders
 ├─ supabase/

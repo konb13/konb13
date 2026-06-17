@@ -7,9 +7,7 @@ export default function Index() {
   useEffect(() => {
     getClient()
       .getSession()
-      .then((session) => {
-        router.replace(session ? '/(tabs)' : '/sign-in');
-      })
+      .then((session) => router.replace(session ? '/(tabs)' : '/sign-in'))
       .catch(() => router.replace('/sign-in'));
   }, []);
 

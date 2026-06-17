@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { getClient } from '@/data';
 import type { CardCatalogEntry, User } from '@/data';
 import { useAsync } from '@/hooks/useAsync';
-import { Screen, Card, Body, Loading } from '@/ui/components';
-import { colors, radius, space } from '@/ui/theme';
+import { Screen, Section, Row, SegmentedControl, Loading } from '@/ui/components';
+import { issuerAccent, radius, space, useTheme } from '@/ui/theme';
 
 interface AddView {
   catalog: CardCatalogEntry[];
@@ -13,6 +14,7 @@ interface AddView {
 }
 
 export default function AddCard() {
+  const { c } = useTheme();
   const { data, loading } = useAsync<AddView>(async () => {
     const client = getClient();
     const [catalog, members] = await Promise.all([client.getCatalog(), client.getMembers()]);
@@ -29,22 +31,20 @@ export default function AddCard() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return catalog;
-    return catalog.filter((c) =>
-      `${c.issuer} ${c.product_name}`.toLowerCase().includes(q),
-    );
+    return catalog.filter((c) => `${c.issuer} ${c.product_name}`.toLowerCase().includes(q));
   }, [catalog, query]);
 
   const onPick = async (entry: CardCatalogEntry) => {
     if (!activeMember || saving) return;
     setSaving(true);
     const today = new Date();
-    const dueDate = new Date(today);
-    dueDate.setFullYear(dueDate.getFullYear() + 1);
+    const due = new Date(today);
+    due.setFullYear(due.getFullYear() + 1);
     await getClient().addUserCard({
       user_id: activeMember,
       catalog_id: entry.id,
       opened_date: today.toISOString().slice(0, 10),
-      annual_fee_due_date: dueDate.toISOString().slice(0, 10),
+      annual_fee_due_date: due.toISOString().slice(0, 10),
       last4: null,
       nickname: null,
     });
@@ -60,80 +60,47 @@ export default function AddCard() {
   }
 
   return (
-    <Screen>
-      <View style={styles.controls}>
-        <View style={styles.memberRow}>
-          {members.map((m) => {
-            const selected = m.id === activeMember;
-            return (
-              <Pressable
-                key={m.id}
-                onPress={() => setMemberId(m.id)}
-                style={[styles.chip, selected && styles.chipOn]}
-              >
-                <Text style={[styles.chipText, selected && { color: '#fff' }]}>
-                  {m.display_name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search the catalog…"
-          placeholderTextColor={colors.textDim}
-          style={styles.input}
-          autoCorrect={false}
+    <Screen scroll edges={['left', 'right', 'bottom']}>
+      <View style={{ paddingHorizontal: space(4), paddingTop: space(4), gap: space(3) }}>
+        <SegmentedControl
+          options={members.map((m) => ({ label: m.display_name, value: m.id }))}
+          value={activeMember}
+          onChange={setMemberId}
         />
+        <View style={[styles.search, { backgroundColor: c.surface }]}>
+          <Ionicons name="search" size={17} color={c.textTertiary} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search the catalog"
+            placeholderTextColor={c.textTertiary}
+            style={[styles.searchInput, { color: c.text }]}
+            autoCorrect={false}
+          />
+        </View>
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(c) => c.id}
-        contentContainerStyle={{ padding: space(4) }}
-        renderItem={({ item }) => (
-          <Pressable onPress={() => onPick(item)} disabled={saving}>
-            <Card>
-              <Text style={styles.name}>
-                {item.issuer} {item.product_name}
-              </Text>
-              <Body dim>
-                {item.network.toUpperCase()} ·{' '}
-                {item.annual_fee ? `$${item.annual_fee}/yr` : 'No annual fee'} ·{' '}
-                {item.benefits_template.length} benefit
-                {item.benefits_template.length === 1 ? '' : 's'}
-              </Body>
-            </Card>
-          </Pressable>
-        )}
-      />
+      <Section style={{ marginTop: space(3) }}>
+        {filtered.map((item) => {
+          const [accent] = issuerAccent(item.issuer);
+          return (
+            <Row
+              key={item.id}
+              icon="card"
+              iconBg={accent}
+              title={`${item.issuer} ${item.product_name}`}
+              subtitle={`${item.network.toUpperCase()} · ${item.annual_fee ? `$${item.annual_fee}/yr` : 'No annual fee'} · ${item.benefits_template.length} benefit${item.benefits_template.length === 1 ? '' : 's'}`}
+              chevron
+              onPress={() => onPick(item)}
+            />
+          );
+        })}
+      </Section>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  controls: { padding: space(4), paddingBottom: space(2), gap: space(3) },
-  memberRow: { flexDirection: 'row', gap: space(2) },
-  chip: {
-    paddingHorizontal: space(4),
-    paddingVertical: space(2),
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.textDim, fontWeight: '600' },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    color: colors.text,
-    paddingHorizontal: space(4),
-    paddingVertical: space(3),
-    fontSize: 15,
-  },
-  name: { color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: space(1) },
+  search: { flexDirection: 'row', alignItems: 'center', gap: space(2), borderRadius: radius.md, paddingHorizontal: space(3), paddingVertical: space(2.5) },
+  searchInput: { flex: 1, fontSize: 17 },
 });
