@@ -30,7 +30,15 @@ export interface DataClient {
   // auth
   getSession(): Promise<Session | null>;
   signIn(email: string): Promise<Session>;
+  /** Verify the emailed one-time code (real auth). */
+  verifyOtp(email: string, token: string): Promise<Session>;
   signOut(): Promise<void>;
+
+  // onboarding
+  /** The signed-in user's profile row, or null if they still need a household. */
+  getCurrentUser(): Promise<User | null>;
+  createHousehold(name: string, displayName: string): Promise<Household>;
+  joinHousehold(inviteCode: string, displayName: string): Promise<Household>;
 
   // household
   getHousehold(): Promise<Household | null>;

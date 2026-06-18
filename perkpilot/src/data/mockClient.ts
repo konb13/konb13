@@ -48,9 +48,26 @@ export class MockClient implements DataClient {
     return delay(session);
   }
 
+  verifyOtp(email: string): Promise<Session> {
+    return this.signIn(email);
+  }
+
   signOut(): Promise<void> {
     session = null;
     return delay(undefined);
+  }
+
+  getCurrentUser(): Promise<User | null> {
+    const user = MOCK_USERS.find((u) => u.id === session?.userId) ?? null;
+    return delay(user);
+  }
+
+  createHousehold(): Promise<Household> {
+    return delay(MOCK_HOUSEHOLD);
+  }
+
+  joinHousehold(): Promise<Household> {
+    return delay(MOCK_HOUSEHOLD);
   }
 
   getHousehold(): Promise<Household | null> {

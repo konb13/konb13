@@ -9,18 +9,33 @@ import { radius, space, typography, useTheme } from '@/ui/theme';
 export default function SignIn() {
   const { c } = useTheme();
   const [email, setEmail] = useState(USE_MOCK_DATA ? 'kbykhovsky@gmail.com' : '');
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<'email' | 'code'>('email');
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const onSignIn = async () => {
+  const sendCode = async () => {
     setBusy(true);
-    setNote(null);
+    setError(null);
     try {
       await getClient().signIn(email.trim());
-      if (USE_MOCK_DATA) router.replace('/(tabs)');
-      else setNote('Check your email for a magic link to finish signing in.');
+      if (USE_MOCK_DATA) return router.replace('/');
+      setStep('code');
     } catch (e) {
-      setNote((e as Error).message);
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await getClient().verifyOtp(email.trim(), code.trim());
+      router.replace('/');
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -30,7 +45,7 @@ export default function SignIn() {
     <Screen edges={['top', 'bottom', 'left', 'right']}>
       <View style={styles.wrap}>
         <View style={[styles.logo, { backgroundColor: c.accent }]}>
-          <Ionicons name="airplane" size={30} color="#fff" />
+          <Ionicons name="paper-plane" size={28} color="#fff" />
         </View>
         <Text style={[typography.largeTitle, { color: c.text, textAlign: 'center' }]}>PerkPilot</Text>
         <Text style={[typography.body, { color: c.textSecondary, textAlign: 'center', marginTop: space(2) }]}>
@@ -39,19 +54,42 @@ export default function SignIn() {
 
         <View style={{ height: space(10) }} />
 
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          placeholderTextColor={c.textTertiary}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          style={[styles.input, { backgroundColor: c.surface, color: c.text }]}
-        />
-        <View style={{ height: space(3) }} />
-        <Button title={busy ? 'Signing in…' : 'Continue'} onPress={onSignIn} loading={busy} />
-        {note ? (
-          <Text style={[typography.footnote, { color: c.textSecondary, textAlign: 'center', marginTop: space(3) }]}>{note}</Text>
+        {step === 'email' ? (
+          <>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              placeholderTextColor={c.textTertiary}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={[styles.input, { backgroundColor: c.surface, color: c.text }]}
+            />
+            <View style={{ height: space(3) }} />
+            <Button title={busy ? 'Sending…' : 'Continue'} onPress={sendCode} loading={busy} />
+          </>
+        ) : (
+          <>
+            <Text style={[typography.footnote, { color: c.textSecondary, textAlign: 'center', marginBottom: space(3) }]}>
+              We emailed a 6-digit code to {email}.
+            </Text>
+            <TextInput
+              value={code}
+              onChangeText={setCode}
+              placeholder="123456"
+              placeholderTextColor={c.textTertiary}
+              keyboardType="number-pad"
+              style={[styles.input, styles.code, { backgroundColor: c.surface, color: c.text }]}
+            />
+            <View style={{ height: space(3) }} />
+            <Button title={busy ? 'Verifying…' : 'Verify'} onPress={verify} loading={busy} />
+            <View style={{ height: space(2) }} />
+            <Button title="Use a different email" variant="plain" onPress={() => setStep('email')} />
+          </>
+        )}
+
+        {error ? (
+          <Text style={[typography.footnote, { color: c.red, textAlign: 'center', marginTop: space(3) }]}>{error}</Text>
         ) : null}
       </View>
       {USE_MOCK_DATA ? (
@@ -74,10 +112,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: space(5),
   },
-  input: {
-    borderRadius: radius.md,
-    paddingHorizontal: space(4),
-    paddingVertical: space(4),
-    fontSize: 17,
-  },
+  input: { borderRadius: radius.md, paddingHorizontal: space(4), paddingVertical: space(4), fontSize: 17 },
+  code: { textAlign: 'center', letterSpacing: 8, fontSize: 24 },
 });

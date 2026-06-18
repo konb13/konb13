@@ -112,27 +112,31 @@ npm test           # estimator + value-at-risk unit tests
 
 ---
 
-## Go live (Supabase)
+## Go live (Supabase) — real two-person setup
 
-1. Create a Supabase project.
-2. Apply the backend:
-   ```bash
-   # via the Supabase SQL editor or CLI, in order:
-   supabase/migrations/0001_schema.sql
-   supabase/migrations/0002_rls.sql
-   supabase/migrations/0003_value_at_risk.sql
-   supabase/migrations/0004_add_card_trigger.sql
-   supabase/seed.sql            # regenerate first with: npx tsx scripts/gen-seed.ts
-   ```
-3. Point the app at it (`cp .env.example .env`):
+1. **Create a project** at [supabase.com](https://supabase.com) (free tier is fine).
+2. **Apply the backend.** Open the project's **SQL Editor**, paste the whole of
+   `supabase/bootstrap.sql`, and run it. That single file is every migration +
+   the catalog/program seed, in order. (Regenerate it with
+   `node scripts/gen-bootstrap.mjs` if you change the schema or catalog.)
+3. **Enable email OTP.** Authentication → Providers → Email: turn on email
+   sign-in and **disable "Confirm email"** (the app verifies a 6-digit code).
+4. **Point the app at it** (`cp .env.example .env`):
    ```
    EXPO_PUBLIC_USE_MOCK_DATA=false
    EXPO_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-KEY
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR-PUBLISHABLE-ANON-KEY
    ```
+5. **Run it** (`npx expo start`) and sign in with your email + the code.
+   - First sign-in → **Set up your household** → *Create new*. The Household tab
+     then shows a 6-character **invite code**.
+   - Your spouse installs the app, signs in with their own email, chooses
+     *Join with code*, and enters that invite code. You now share one dataset.
 
-RLS scopes every row to the caller's household, so household sharing is just the
-policies in `0002_rls.sql` — no per-query filtering in the app.
+The anon key is safe to embed in the client (it only acts through RLS). Every
+row is scoped to the caller's household by the policies in `0002_rls.sql`;
+onboarding is handled by the `create_household` / `join_household` RPCs in
+`0006_onboarding.sql`. No per-query filtering in the app.
 
 ---
 

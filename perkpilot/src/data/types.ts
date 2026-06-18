@@ -9,6 +9,8 @@ export interface Household {
   id: UUID;
   name: string;
   created_at: string;
+  /** Short code a spouse enters to join this household. */
+  invite_code?: string;
 }
 
 export interface User {

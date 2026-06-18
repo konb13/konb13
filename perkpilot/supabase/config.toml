@@ -1,0 +1,12 @@
+# Minimal Supabase CLI config. Run `supabase link --project-ref <ref>` then
+# `supabase db push` to apply migrations/, or paste supabase/bootstrap.sql into
+# the dashboard SQL editor.
+project_id = "perkpilot"
+
+[auth]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# OTP code sign-in (the app uses verifyOtp with the 6-digit email code).
+enable_confirmations = false

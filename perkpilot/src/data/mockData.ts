@@ -14,6 +14,7 @@ export const MOCK_HOUSEHOLD: Household = {
   id: 'hh_1',
   name: 'The Bykhovsky Household',
   created_at: iso(-400),
+  invite_code: 'DEMO42',
 };
 
 export const MOCK_USERS: User[] = [

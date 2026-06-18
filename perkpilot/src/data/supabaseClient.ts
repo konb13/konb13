@@ -51,8 +51,33 @@ export class SupabaseDataClient implements DataClient {
     return { userId: '', email };
   }
 
+  async verifyOtp(email: string, token: string): Promise<Session> {
+    const { data, error } = await this.sb.auth.verifyOtp({ email, token, type: 'email' });
+    if (error) throw error;
+    return { userId: data.user?.id ?? '', email: data.user?.email ?? email };
+  }
+
   async signOut(): Promise<void> {
     await this.sb.auth.signOut();
+  }
+
+  async getCurrentUser(): Promise<User | null> {
+    const { data: auth } = await this.sb.auth.getUser();
+    if (!auth.user) return null;
+    const { data } = await this.sb.from('users').select('*').eq('id', auth.user.id).maybeSingle();
+    return (data as User) ?? null;
+  }
+
+  async createHousehold(name: string, displayName: string): Promise<Household> {
+    const { data, error } = await this.sb.rpc('create_household', { p_name: name, p_display_name: displayName });
+    if (error) throw error;
+    return data as Household;
+  }
+
+  async joinHousehold(inviteCode: string, displayName: string): Promise<Household> {
+    const { data, error } = await this.sb.rpc('join_household', { p_code: inviteCode, p_display_name: displayName });
+    if (error) throw error;
+    return data as Household;
   }
 
   async getHousehold(): Promise<Household | null> {

@@ -52,6 +52,12 @@ export default function HouseholdScreen() {
         ))}
       </Section>
 
+      {household?.invite_code ? (
+        <Section header="Invite" footer="Share this code with your spouse — they enter it when they sign up.">
+          <Row icon="key" iconBg={c.accent} title="Invite code" value={household.invite_code} />
+        </Section>
+      ) : null}
+
       <Section header="Manage">
         <Row icon="person-add" iconBg={c.green} title="Invite a member" chevron onPress={() => {}} />
         <Row icon="notifications" iconBg={c.red} title="Reminder settings" chevron onPress={() => {}} />
